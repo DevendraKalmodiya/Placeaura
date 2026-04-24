@@ -109,6 +109,65 @@ app.get('/api/jobs', async (req, res) => {
     res.status(500).send('Server Error fetching jobs');
   }
 });
+
+
+// --- POST NEW JOB (With Gemini Vector Generation) ---
+app.post('/api/jobs', async (req, res) => {
+  const { title, company, location, description, recruiterId } = req.body;
+
+  try {
+    // 1. Initialize Gemini Embedding Model
+    // Note: Make sure this matches the exact model name you used for the resume upload!
+    
+      // Change it to exactly this:
+const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
+    
+    // 2. Turn the job description into a 3072-dimension vector
+    const result = await model.embedContent(description);
+    const embedding = result.embedding.values;
+    
+    // Format it perfectly for Supabase's pgvector
+    const formatVector = `[${embedding.join(',')}]`;
+
+    // 3. Save the job and the vector to the database
+    // (We include recruiter_id so we know who posted it)
+   // Change this to include recruiter_id
+    const insertQuery = `
+      INSERT INTO jobs (title, company, location, description, embedding, recruiter_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, title;
+    `;
+    
+    const newJob = await pool.query(insertQuery, [title, company, location, description, formatVector, recruiterId]);
+    
+   
+
+    res.status(201).json({ 
+      message: 'Job posted and vectorized successfully!', 
+      job: newJob.rows[0] 
+    });
+
+  } catch (err) {
+    console.error("Job Posting Error:", err.message);
+    res.status(500).json({ error: 'Failed to post job and generate AI vector' });
+  }
+});
+
+// --- GET JOBS FOR SPECIFIC RECRUITER ---
+app.get('/api/recruiter-jobs/:recruiterId', async (req, res) => {
+  const { recruiterId } = req.params;
+  try {
+    const result = await pool.query(
+      'SELECT id, title, location, (SELECT count(*) FROM applications WHERE applications.job_id = jobs.id) as applicant_count FROM jobs WHERE recruiter_id = $1 ORDER BY id DESC', 
+      [recruiterId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Fetch Recruiter Jobs Error:", err.message);
+    res.status(500).json({ error: 'Failed to fetch jobs' });
+  }
+});
+
 // --- B. UPLOAD RESUME (Extract Text & Generate Gemini Embeddings) ---
 app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
   try {
@@ -137,7 +196,8 @@ app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
         console.log(`🤖 Sending ${resumeText.length} characters to Gemini...`);
 
         // 3. Ask Gemini for the Semantic Vector (3072 dimensions)
-        const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+        // Change it to exactly this:
+const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
         const result = await model.embedContent(resumeText);
         
         const vectorArray = result.embedding.values;

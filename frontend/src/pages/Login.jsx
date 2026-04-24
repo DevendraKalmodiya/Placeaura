@@ -26,17 +26,23 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        // 1. CRITICAL FIX: Save everything to localStorage FIRST
+        // 1. Save the credentials AND the role
         localStorage.setItem('token', data.token);
         localStorage.setItem('userId', data.user.id);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('userRole', data.user.role); 
         
-        // 2. Add a tiny delay to ensure React state catches up before redirecting
+        // 2. Route them to their specific world
         setTimeout(() => {
-          navigate('/profile');
+          if (data.user.role === 'recruiter') {
+            navigate('/recruiter-dashboard');
+          } else if (data.user.role === 'admin') {
+            navigate('/admin-dashboard');
+          } else {
+            navigate('/student-dashboard'); // Rename your Home route!
+          }
         }, 100);
-
-      } else {
+      }
+       else {
         // Display the 401 Unauthorized message from the backend safely
         setErrorMsg(data.message || 'Invalid email or password.');
       }

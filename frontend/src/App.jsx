@@ -1,34 +1,102 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+// Import your components
 import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import Home from './pages/Home';
-import Jobs from './pages/Jobs';
+import Footer from './components/Footer'; // 👈 THE RETURN OF THE FOOTER
 import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Profile from './pages/Profile';
+import Signup from './pages/Signup'; 
+import StudentDashboard from './pages/Home'; 
+import Jobs from './pages/Jobs'; 
+import Profile from './pages/Profile'; 
 import RecruiterDashboard from './pages/RecruiterDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import RecruiterJobs from './pages/RecruiterJobs';
+import RecruiterApplicants from './pages/RecruiterApplicants';
+import RecruiterProfile from './pages/RecruiterProfile';
 
-function App() {
+// 🛡️ THE SECURITY GUARD COMPONENT
+const ProtectedRoute = ({ children, allowedRole }) => {
+  const userRole = localStorage.getItem('userRole');
+  
+  if (userRole !== allowedRole) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children; 
+};
+
+export default function App() {
   return (
-    <Router>
-      <div className="flex flex-col min-h-screen font-sans text-gray-900">
-        <Navbar />
-        <main className="flex-grow">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/jobs" element={<Jobs />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/recruiter" element={<RecruiterDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-          </Routes>
-        </main>
-        <Footer />
+    <BrowserRouter>
+      
+      {/* Navbar sits at the very top */}
+      <Navbar /> 
+      
+      {/* This div ensures the main content stretches and pushes the footer to the bottom */}
+      <div className="flex-grow min-h-screen flex flex-col">
+        <Routes>
+          
+          {/* 🚦 BASE URL FIX */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          
+          {/* PUBLIC ROUTES */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          
+          {/* 🎓 STUDENT WORLD */}
+          <Route path="/student-dashboard" element={
+            <ProtectedRoute allowedRole="student">
+              <StudentDashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/jobs" element={
+            <ProtectedRoute allowedRole="student">
+              <Jobs />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/profile" element={
+            <ProtectedRoute allowedRole="student">
+              <Profile />
+            </ProtectedRoute>
+          } />
+
+         {/* 🏢 RECRUITER WORLD */}
+          {/* Redirect the old login path to the new Jobs page */}
+          <Route path="/recruiter-dashboard" element={<Navigate to="/recruiter/jobs" replace />} />
+          
+          <Route path="/recruiter/jobs" element={
+            <ProtectedRoute allowedRole="recruiter">
+              <RecruiterJobs />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/recruiter/applicants" element={
+            <ProtectedRoute allowedRole="recruiter">
+              <RecruiterApplicants />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/recruiter/profile" element={
+            <ProtectedRoute allowedRole="recruiter">
+              <RecruiterProfile />
+            </ProtectedRoute>
+          } />
+
+          {/* 👑 ADMIN WORLD */}
+          <Route path="/admin-dashboard" element={
+            <ProtectedRoute allowedRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          } />
+          
+        </Routes>
       </div>
-    </Router>
+
+      {/* Footer sits at the very bottom */}
+      <Footer />
+
+    </BrowserRouter>
   );
 }
-
-export default App;
