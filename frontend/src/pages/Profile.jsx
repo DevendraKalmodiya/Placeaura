@@ -9,12 +9,11 @@ export default function Profile() {
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
 
-  // 1. Check Auth Status on Mount
+  // 1. Check Auth Status and Load User Data on Mount
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     const token = localStorage.getItem('token');
 
-    // If either the token or user data is missing, kick them back to login
     if (!token || !storedUser) {
       navigate('/login');
       return;
@@ -37,14 +36,13 @@ export default function Profile() {
       return;
     }
     setSelectedFile(file);
-    setMessage({ text: '', type: '' }); // Clear previous messages
+    setMessage({ text: '', type: '' }); 
   };
 
   // 3. Process AI Upload
   const handleFileUpload = async (event) => {
     event.preventDefault();
     
-    // Grab the ID from memory
     const userId = localStorage.getItem('userId');
 
     if (!selectedFile) {
@@ -58,9 +56,9 @@ export default function Profile() {
     }
 
     setIsUploading(true);
-    setMessage({ text: 'Generating 3072-Dimension AI Vector... Please wait.', type: 'info' });
+    setMessage({ text: '🤖 Generating 3072-Dimension AI Vector... Please wait.', type: 'info' });
 
-    // CRITICAL FIX: Append BOTH the file and the userId to the form data
+    // Pack the file and the ID for the backend
     const formData = new FormData();
     formData.append('resume', selectedFile);
     formData.append('userId', userId); 
@@ -74,9 +72,9 @@ export default function Profile() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage({ text: data.message || 'Resume uploaded successfully!', type: 'success' });
+        setMessage({ text: data.message || '✅ AI Profile generated successfully!', type: 'success' });
         
-        // Update local UI state
+        // Update local UI state AND LocalStorage so the "View PDF" button appears instantly
         const updatedUser = { ...user, resume_url: data.filename };
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -85,23 +83,14 @@ export default function Profile() {
         setSelectedFile(null);
         document.getElementById('resume-upload-input').value = '';
       } else {
-        setMessage({ text: data.message || 'Upload failed.', type: 'error' });
+        setMessage({ text: `❌ ${data.message || 'Upload failed.'}`, type: 'error' });
       }
     } catch (error) {
       console.error("Upload error:", error);
-      setMessage({ text: 'Server error. Is the backend running?', type: 'error' });
+      setMessage({ text: '❌ Server error. Is the backend running?', type: 'error' });
     } finally {
       setIsUploading(false);
     }
-  };
-
-  // 4. Handle Secure Logout
-  const handleLogout = () => {
-    // Completely clear the browser's memory for this app
-    localStorage.removeItem('token');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('user');
-    navigate('/login');
   };
 
   return (
@@ -116,12 +105,6 @@ export default function Profile() {
             </h1>
             <p className="text-gray-600 mt-2 font-medium">Manage your details and AI Match engine resume.</p>
           </div>
-          <button 
-            onClick={handleLogout}
-            className="text-red-500 hover:text-red-700 font-bold px-4 py-2 rounded-lg bg-red-50 hover:bg-red-100 transition-colors"
-          >
-            Sign Out
-          </button>
         </div>
 
         {/* Main Card */}
@@ -191,7 +174,7 @@ export default function Profile() {
                   <div className={`p-3 rounded-lg text-sm font-medium border ${
                     message.type === 'error' ? 'bg-red-50 text-red-600 border-red-100' : 
                     message.type === 'success' ? 'bg-green-50 text-green-600 border-green-100' :
-                    'bg-blue-50 text-blue-600 border-blue-100' // info state
+                    'bg-blue-50 text-blue-600 border-blue-100' 
                   }`}>
                     {message.text}
                   </div>

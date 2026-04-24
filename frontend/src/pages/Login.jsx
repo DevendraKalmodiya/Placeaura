@@ -19,31 +19,29 @@ export default function Login() {
         headers: {
           'Content-Type': 'application/json',
         },
-        // Ensure email and password exactly match the state variables
         body: JSON.stringify({ email, password }), 
       });
 
+      // 1. READ THE STREAM EXACTLY ONCE
       const data = await response.json();
 
       if (response.ok) {
-        // 1. Save the credentials AND the role
+        // 2. Save all required data to browser memory
         localStorage.setItem('token', data.token);
+        localStorage.setItem('userRole', data.user.role);
         localStorage.setItem('userId', data.user.id);
-        localStorage.setItem('userRole', data.user.role); 
-        
-        // 2. Route them to their specific world
-        setTimeout(() => {
-          if (data.user.role === 'recruiter') {
-            navigate('/recruiter-dashboard');
-          } else if (data.user.role === 'admin') {
-            navigate('/admin-dashboard');
-          } else {
-            navigate('/student-dashboard'); // Rename your Home route!
-          }
-        }, 100);
-      }
-       else {
-        // Display the 401 Unauthorized message from the backend safely
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        // 3. Navigate to the correct dashboard
+        if (data.user.role === 'student') {
+          navigate('/profile'); 
+        } else if (data.user.role === 'recruiter') {
+          navigate('/recruiter/jobs');
+        } else if (data.user.role === 'admin') {
+          navigate('/admin-dashboard');
+        }
+      } else {
+        // Display the error message from the backend safely
         setErrorMsg(data.message || 'Invalid email or password.');
       }
     } catch (error) {
@@ -79,7 +77,7 @@ export default function Login() {
             )}
 
             <div>
-              <label pl="email" className="block text-sm font-medium text-gray-700">Email address</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
               <div className="mt-1">
                 <input
                   id="email"
@@ -93,7 +91,7 @@ export default function Login() {
             </div>
 
             <div>
-              <label pl="password" className="block text-sm font-medium text-gray-700">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
               <div className="mt-1">
                 <input
                   id="password"

@@ -6,8 +6,10 @@ export default function RecruiterJobs() {
   const [statusMsg, setStatusMsg] = useState('');
   const [jobs, setJobs] = useState([]);
   
+  // Expanded form state to handle all the new professional fields
   const [formData, setFormData] = useState({
-    title: '', company: '', location: '', description: ''
+    title: '', company: '', location: '', employment_type: 'Full-time', salary: '',
+    summary: '', responsibilities: '', required_skills: '', qualifications: '', preferred_skills: ''
   });
 
   const fetchMyJobs = async () => {
@@ -27,10 +29,14 @@ export default function RecruiterJobs() {
     fetchMyJobs();
   }, []);
 
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
   const handlePostJob = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
-    setStatusMsg('🤖 Gemini is generating 3072-dimension job vector...');
+    setStatusMsg('🤖 Gemini AI is mapping this highly detailed role...');
 
     try {
       const recruiterId = localStorage.getItem('userId');
@@ -42,10 +48,15 @@ export default function RecruiterJobs() {
 
       if (!response.ok) throw new Error('Failed to post job');
 
-      setStatusMsg('✅ Job successfully posted and mathematically mapped!');
-      setFormData({ title: '', company: '', location: '', description: '' });
+      setStatusMsg('✅ Comprehensive Job successfully posted and vectorized!');
       
-      fetchMyJobs(); // Instantly refresh the list after posting!
+      // Reset the massive form
+      setFormData({ 
+        title: '', company: '', location: '', employment_type: 'Full-time', salary: '',
+        summary: '', responsibilities: '', required_skills: '', qualifications: '', preferred_skills: '' 
+      });
+      
+      fetchMyJobs(); 
 
       setTimeout(() => {
         setStatusMsg('');
@@ -63,56 +74,110 @@ export default function RecruiterJobs() {
   return (
     <div className="container mx-auto px-6 py-12 max-w-5xl">
       <div className="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
-        <h1 className="text-3xl font-bold text-gray-900">Manage Jobs</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Manage Jobs</h1>
+          <p className="text-gray-500 mt-1">Post roles and let our AI engine match the perfect candidates.</p>
+        </div>
         <button 
           onClick={() => setShowForm(!showForm)}
           className="bg-blue-600 text-white px-5 py-2.5 rounded-md font-bold hover:bg-blue-700 transition-colors shadow-sm"
         >
-          {showForm ? 'Cancel' : '+ Post New Job'}
+          {showForm ? 'Cancel Posting' : '+ Post New AI Role'}
         </button>
       </div>
 
-      {/* THE RESTORED AI JOB POSTING FORM */}
+      {/* THE UPGRADED COMPREHENSIVE JOB FORM */}
       {showForm && (
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 mb-8 animation-fade-in">
-          <h2 className="text-xl font-bold mb-6 text-gray-800">Job Details</h2>
-          <form onSubmit={handlePostJob} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
-                <input required type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
-                  value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} 
-                  placeholder="e.g. Senior Node.js Developer" />
+          <form onSubmit={handlePostJob} className="space-y-8">
+            
+            {/* SECTION 1: THE BASICS */}
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">1. The Basics</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
+                  <input required name="title" type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                    value={formData.title} onChange={handleChange} placeholder="e.g. Full Stack Developer" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                  <input required name="company" type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                    value={formData.company} onChange={handleChange} placeholder="e.g. Placeaura Tech" />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
-                <input required type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
-                  value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} 
-                  placeholder="e.g. Placeaura Tech" />
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                  <input required name="location" type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                    value={formData.location} onChange={handleChange} placeholder="e.g. Remote / Bangalore" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
+                  <select name="employment_type" value={formData.employment_type} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                    <option value="Full-time">Full-time</option>
+                    <option value="Part-time">Part-time</option>
+                    <option value="Internship">Internship</option>
+                    <option value="Contract">Contract</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Salary / Stipend (Optional)</label>
+                  <input name="salary" type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                    value={formData.salary} onChange={handleChange} placeholder="e.g. ₹5–8 LPA" />
+                </div>
               </div>
             </div>
 
+            {/* SECTION 2: THE ROLE */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-              <input required type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
-                value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} 
-                placeholder="e.g. Remote / Bangalore" />
+              <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">2. The Role</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Job Summary</label>
+                  <textarea required name="summary" rows="2" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                    value={formData.summary} onChange={handleChange} placeholder="2–3 lines about what the role does and its purpose..." />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Key Responsibilities</label>
+                  <textarea required name="responsibilities" rows="4" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                    value={formData.responsibilities} onChange={handleChange} placeholder="- Build and maintain applications&#10;- Write clean code&#10;- Collaborate with team" />
+                </div>
+              </div>
             </div>
 
+            {/* SECTION 3: QUALIFICATIONS & SKILLS */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Job Description</label>
-              <textarea required rows="5" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
-                value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} 
-                placeholder="Paste the full job requirements. Gemini will read this to match with student resumes." />
+              <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">3. Qualifications & Skills</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Required Skills</label>
+                    <textarea required name="required_skills" rows="3" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                      value={formData.required_skills} onChange={handleChange} placeholder="Languages (Java, Python)&#10;Frameworks (React, Node.js)" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Qualifications</label>
+                    <textarea required name="qualifications" rows="3" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                      value={formData.qualifications} onChange={handleChange} placeholder="B.Tech in CS or related field&#10;0–2 years experience (or freshers)" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Skills (Optional)</label>
+                  <input name="preferred_skills" type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                    value={formData.preferred_skills} onChange={handleChange} placeholder="e.g. AWS knowledge, Docker, CI/CD" />
+                </div>
+              </div>
             </div>
 
             <button disabled={isProcessing} type="submit" 
-              className="w-full bg-gray-900 text-white font-bold py-3 rounded-md hover:bg-gray-800 disabled:bg-gray-400 transition-colors">
-              {isProcessing ? 'Generating AI Vector...' : 'Launch Job to AI Engine'}
+              className="w-full bg-gray-900 text-white font-bold py-4 rounded-md hover:bg-gray-800 disabled:bg-gray-400 transition-colors text-lg shadow-md">
+              {isProcessing ? 'Generating AI Vector...' : 'Launch Role to AI Match Engine'}
             </button>
 
             {statusMsg && (
-              <p className={`text-center font-medium mt-4 ${statusMsg.includes('❌') ? 'text-red-600' : 'text-blue-600'}`}>
+              <p className={`text-center font-bold mt-4 p-3 rounded bg-gray-50 ${statusMsg.includes('❌') ? 'text-red-600 border border-red-200' : 'text-green-600 border border-green-200'}`}>
                 {statusMsg}
               </p>
             )}
@@ -127,31 +192,39 @@ export default function RecruiterJobs() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="p-4 font-semibold text-gray-600">Job Title</th>
-                <th className="p-4 font-semibold text-gray-600">Location</th>
-                <th className="p-4 font-semibold text-gray-600">Applicants</th>
-                <th className="p-4 font-semibold text-gray-600">Actions</th>
+                <th className="p-4 font-semibold text-gray-600">Details</th>
+                <th className="p-4 font-semibold text-gray-600 text-center">Applicants</th>
+                <th className="p-4 font-semibold text-gray-600 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {jobs.map((job) => (
                 <tr key={job.id} className="hover:bg-gray-50">
-                  <td className="p-4 font-medium text-gray-900">{job.title}</td>
-                  <td className="p-4 text-gray-600">{job.location}</td>
-                  <td className="p-4">
-                    <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-sm font-medium">
-                      {job.applicant_count || 0} Applied
-                    </span>
+                  <td className="p-4 font-bold text-gray-900">
+                    {job.title}
+                    <div className="text-xs font-normal text-gray-500 mt-1">ID: #{job.id}</div>
                   </td>
                   <td className="p-4">
-                    <button className="text-blue-600 font-medium hover:underline">View Applicants</button>
+                    <span className="block text-gray-600 font-medium">{job.location}</span>
+                    {/* Note: Added employment type to the table view if you fetch it! */}
+                  </td>
+                  <td className="p-4 text-center">
+                    <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-sm font-bold shadow-sm">
+                      {job.applicant_count || 0}
+                    </span>
+                  </td>
+                  <td className="p-4 text-right">
+                    <button className="text-blue-600 font-bold hover:text-blue-800 hover:underline">View Matches</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <div className="p-8 text-center text-gray-500 font-medium">
-            You haven't posted any jobs yet. Click "+ Post New Job" to get started.
+          <div className="p-12 text-center text-gray-500">
+            <div className="text-4xl mb-3">📄</div>
+            <p className="font-medium text-lg">You haven't posted any jobs yet.</p>
+            <p className="text-sm mt-1">Click "+ Post New AI Role" to map your first job.</p>
           </div>
         )}
       </div>

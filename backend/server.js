@@ -67,7 +67,7 @@ const upload = multer({
 // 3. API ROUTES
 // ==========================================
 
-// --- A. GET JOBS (With Gemini Semantic Matching) ---
+// --- A. GET JOBS (With Gemini Semantic Matching & Comprehensive Fields) ---
 app.get('/api/jobs', async (req, res) => {
   const userId = req.query.userId; 
 
@@ -79,12 +79,12 @@ app.get('/api/jobs', async (req, res) => {
 
       // If user has a resume embedding, calculate vector distance
       if (userVector) {
-        // THE FIX: Check if Supabase returned a string. If yes, use it. If it's an array, format it.
         const formatVector = typeof userVector === 'string' ? userVector : `[${userVector.join(',')}]`;
         
         const matchQuery = `
           SELECT 
-            id, title, company, location, description,
+            id, title, company, location, description, 
+            summary, responsibilities, required_skills, qualifications, preferred_skills, salary, employment_type,
             ROUND((1 - (embedding <=> $1)) * 100)::text || '%' AS match_percentage
           FROM jobs 
           WHERE embedding IS NOT NULL
@@ -98,9 +98,13 @@ app.get('/api/jobs', async (req, res) => {
 
     // Scenario 2: No user logged in OR no resume uploaded yet (Fallback)
     const fallbackResult = await pool.query(`
-      SELECT id, title, company, location, description, '0%' AS match_percentage 
+      SELECT 
+        id, title, company, location, description, 
+        summary, responsibilities, required_skills, qualifications, preferred_skills, salary, employment_type,
+        '0%' AS match_percentage 
       FROM jobs 
-      ORDER BY id ASC
+      WHERE embedding IS NOT NULL
+      ORDER BY id DESC
     `);
     res.json(fallbackResult.rows);
     
@@ -110,46 +114,62 @@ app.get('/api/jobs', async (req, res) => {
   }
 });
 
-
-// --- POST NEW JOB (With Gemini Vector Generation) ---
+// --- POST NEW JOB (Upgraded with Detailed Fields & Vector Saving) ---
 app.post('/api/jobs', async (req, res) => {
-  const { title, company, location, description, recruiterId } = req.body;
+  const { 
+    title, company, location, summary, responsibilities, 
+    required_skills, qualifications, preferred_skills, 
+    salary, employment_type, recruiterId 
+  } = req.body;
 
   try {
-    // 1. Initialize Gemini Embedding Model
-    // Note: Make sure this matches the exact model name you used for the resume upload!
-    
-      // Change it to exactly this:
-const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
-    
-    // 2. Turn the job description into a 3072-dimension vector
-    const result = await model.embedContent(description);
+    // 1. Combine ALL the fields into a rich text prompt for the AI to read
+    const aiContextString = `
+      Job Title: ${title}
+      Company: ${company}
+      Location: ${location}
+      Employment Type: ${employment_type}
+      Salary/Stipend: ${salary}
+      Summary: ${summary}
+      Key Responsibilities: ${responsibilities}
+      Required Skills: ${required_skills}
+      Qualifications: ${qualifications}
+      Preferred Skills: ${preferred_skills || 'None specified'}
+    `;
+
+    // 2. Turn this incredibly detailed string into a 3072-dimension vector
+    const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
+    const result = await model.embedContent(aiContextString);
     const embedding = result.embedding.values;
-    
-    // Format it perfectly for Supabase's pgvector
     const formatVector = `[${embedding.join(',')}]`;
 
-    // 3. Save the job and the vector to the database
-    // (We include recruiter_id so we know who posted it)
-   // Change this to include recruiter_id
+    // 3. Save EVERYTHING to the upgraded Supabase table (INCLUDING THE VECTOR)
     const insertQuery = `
-      INSERT INTO jobs (title, company, location, description, embedding, recruiter_id)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO jobs (
+        title, company, location, description, recruiter_id, 
+        summary, responsibilities, required_skills, 
+        qualifications, preferred_skills, salary, employment_type,
+        embedding
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING id, title;
     `;
     
-    const newJob = await pool.query(insertQuery, [title, company, location, description, formatVector, recruiterId]);
-    
-   
+    const newJob = await pool.query(insertQuery, [
+      title, company, location, aiContextString, recruiterId,
+      summary, responsibilities, required_skills, 
+      qualifications, preferred_skills, salary, employment_type,
+      formatVector
+    ]);
 
     res.status(201).json({ 
-      message: 'Job posted and vectorized successfully!', 
+      message: 'Comprehensive Job posted and vectorized successfully!', 
       job: newJob.rows[0] 
     });
 
   } catch (err) {
     console.error("Job Posting Error:", err.message);
-    res.status(500).json({ error: 'Failed to post job and generate AI vector' });
+    res.status(500).json({ error: 'Failed to post comprehensive job' });
   }
 });
 
@@ -196,8 +216,7 @@ app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
         console.log(`🤖 Sending ${resumeText.length} characters to Gemini...`);
 
         // 3. Ask Gemini for the Semantic Vector (3072 dimensions)
-        // Change it to exactly this:
-const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
+        const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
         const result = await model.embedContent(resumeText);
         
         const vectorArray = result.embedding.values;
@@ -309,6 +328,38 @@ app.post('/api/login', async (req, res) => {
   } catch (err) {
     console.error("Login Error:", err.message);
     res.status(500).json({ message: 'Server error during login.' });
+  }
+});
+
+// --- ADMIN DASHBOARD STATS ---
+app.get('/api/admin/stats', async (req, res) => {
+  try {
+    // 1. Get raw counts
+    const students = await pool.query("SELECT COUNT(*) FROM users WHERE role = 'student'");
+    const recruiters = await pool.query("SELECT COUNT(*) FROM users WHERE role = 'recruiter'");
+    const jobs = await pool.query("SELECT COUNT(*) FROM jobs");
+
+    // 2. Get the latest recruiter activity (Joining jobs table with users table)
+    const recentJobsQuery = `
+      SELECT jobs.id, jobs.title, jobs.company, users.name AS recruiter_name, jobs.location
+      FROM jobs
+      JOIN users ON jobs.recruiter_id = users.id
+      ORDER BY jobs.id DESC
+      LIMIT 5;
+    `;
+    const recentJobs = await pool.query(recentJobsQuery);
+
+    // 3. Send it all back to the frontend
+    res.json({
+      totalStudents: students.rows[0].count,
+      totalRecruiters: recruiters.rows[0].count,
+      totalJobs: jobs.rows[0].count,
+      recentJobs: recentJobs.rows
+    });
+
+  } catch (err) {
+    console.error("Admin Stats Error:", err.message);
+    res.status(500).json({ error: 'Failed to fetch admin statistics' });
   }
 });
 
