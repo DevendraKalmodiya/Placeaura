@@ -11,8 +11,8 @@ import Profile from './pages/Profile';
 import RecruiterDashboard from './pages/RecruiterDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import RecruiterJobs from './pages/RecruiterJobs';
-import RecruiterApplicants from './pages/RecruiterApplicants';
 import RecruiterProfile from './pages/RecruiterProfile';
+import Applications from './pages/Applications';
 
 // 🛡️ THE SECURITY GUARD COMPONENT
 const ProtectedRoute = ({ children, allowedRole }) => {
@@ -71,18 +71,16 @@ export default function App() {
               <RecruiterJobs />
             </ProtectedRoute>
           } />
-          
-          <Route path="/recruiter/applicants" element={
-            <ProtectedRoute allowedRole="recruiter">
-              <RecruiterApplicants />
-            </ProtectedRoute>
-          } />
+         
 
           <Route path="/recruiter/profile" element={
             <ProtectedRoute allowedRole="recruiter">
               <RecruiterProfile />
             </ProtectedRoute>
           } />
+
+          {/* Recruiter Private Routes */}
+<Route path="/recruiter/applications" element={<Applications />} />
 
           {/* 👑 ADMIN WORLD */}
           <Route path="/admin-dashboard" element={

@@ -2,6 +2,11 @@ import { useState } from 'react';
 
 export default function JobCard({ job }) {
   // State to control the visibility of the popup modal
+  const onApplyClick = async () => {
+    await handleApply(job.id, job.match_percentage);
+    if (setSelectedJob) setSelectedJob(null); // <--- Now it exists!
+  };
+
   const [showModal, setShowModal] = useState(false);
 
   // Parse the match percentage for color coding
@@ -21,6 +26,39 @@ export default function JobCard({ job }) {
   } else {
     document.body.style.overflow = 'unset';
   }
+
+  const handleApply = async (jobId, matchScore) => {
+  const studentId = localStorage.getItem('userId');
+  
+  if (!studentId) {
+    alert("Please log in to apply.");
+    return;
+  }
+
+  try {
+    const response = await fetch('http://localhost:5000/api/applications/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        jobId, 
+        studentId, 
+        matchScore: matchScore || '0%' // Pass the AI match score
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      alert("✅ Success! Your AI-profile has been submitted to the recruiter.");
+      setSelectedJob(null); // Close the modal
+    } else {
+      alert(data.message || "❌ Something went wrong.");
+    }
+  } catch (error) {
+    console.error("Apply error:", error);
+    alert("❌ Server error. Check your connection.");
+  }
+};
 
   return (
     <>
@@ -129,6 +167,7 @@ export default function JobCard({ job }) {
               <button 
                 className="bg-blue-600 text-white px-8 py-2.5 rounded-lg font-bold hover:bg-blue-700 shadow-md transition-all hover:-translate-y-0.5"
                 onClick={() => {
+                  handleApply(job.id, job.match_percentage);
                   alert(`Application for ${job.title} at ${job.company} submitted successfully!`);
                   setShowModal(false);
                 }}

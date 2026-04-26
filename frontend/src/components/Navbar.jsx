@@ -47,8 +47,10 @@ export default function Navbar() {
             {role === 'recruiter' && (
               <>
                 <Link to="/recruiter/jobs" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Jobs</Link>
-                <Link to="/recruiter/applicants" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Applicants</Link>
                 <Link to="/recruiter/profile" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Profile</Link>
+                <Link to="/recruiter/applications" className="hover:text-blue-600 font-bold">
+                Applications
+</Link>              
               </>
             )}
 

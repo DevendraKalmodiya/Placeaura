@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 export default function Jobs() {
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedJob, setSelectedJob] = useState(null); 
+  const [selectedJob, setSelectedJob] = useState(null);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -25,6 +25,38 @@ export default function Jobs() {
     fetchJobs();
   }, []);
 
+  const handleApply = async (jobId, matchScore) => {
+  const studentId = localStorage.getItem('userId');
+  if (!studentId) {
+    alert("Please log in to apply.");
+    return;
+  }
+
+  try {
+    const response = await fetch('http://localhost:5000/api/applications/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        jobId, 
+        studentId, 
+        matchScore: matchScore || '0%' 
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      alert("✅ Application submitted successfully!");
+    } else {
+      // THIS IS THE KEY: If status is 400, show the specific message from the backend
+      alert(`Notice: ${data.message}`); 
+    }
+  } catch (error) {
+    console.error("Apply error:", error);
+    alert("❌ Connection error. Check if your server is running.");
+  }
+};
+
   // Prevent scrolling on the background when modal is open
   useEffect(() => {
     if (selectedJob) {
@@ -33,6 +65,12 @@ export default function Jobs() {
       document.body.style.overflow = 'unset';
     }
   }, [selectedJob]);
+
+  <JobCard 
+  job={job} 
+  handleApply={handleApply} 
+  setSelectedJob={setSelectedJob} // <--- Pass it here
+/>
 
   if (isLoading) {
     return (
@@ -93,7 +131,10 @@ export default function Jobs() {
                     >
                       View Full Details
                     </button>
-                    <button className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-blue-700 transition-colors">
+                    <button 
+                      onClick={() => handleApply(job.id, job.match_percentage)}
+                      className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-blue-700 transition-colors"
+                    >
                       Quick Apply
                     </button>
                   </div>
@@ -112,7 +153,6 @@ export default function Jobs() {
 
       {/* --- FLOATING MODAL CARD --- */}
       {selectedJob && (
-        // THE FIX: Changed from dark bg-gray-900 to bright, frosted glass bg-white/80
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white bg-opacity-80 backdrop-blur-md animation-fade-in">
           
           <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-gray-200">
@@ -193,7 +233,10 @@ export default function Jobs() {
             </div>
 
             <div className="p-4 border-t border-gray-200 bg-white z-10">
-              <button className="w-full bg-blue-600 text-white text-lg py-4 rounded-xl font-bold shadow-md hover:bg-blue-700 hover:-translate-y-0.5 transition-all flex justify-center items-center gap-2">
+              <button 
+                onClick={() => handleApply(selectedJob.id, selectedJob.match_percentage)} 
+                className="w-full bg-blue-600 text-white text-lg py-4 rounded-xl font-bold shadow-md hover:bg-blue-700 hover:-translate-y-0.5 transition-all flex justify-center items-center gap-2"
+              >
                 Apply Now 
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
               </button>

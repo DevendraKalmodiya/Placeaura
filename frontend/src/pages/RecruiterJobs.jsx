@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-
+import { useNavigate } from 'react-router-dom';
 export default function RecruiterJobs() {
   const [showForm, setShowForm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -29,6 +29,8 @@ export default function RecruiterJobs() {
     fetchMyJobs();
   }, []);
 
+  const navigate = useNavigate();
+  
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -214,8 +216,13 @@ export default function RecruiterJobs() {
                     </span>
                   </td>
                   <td className="p-4 text-right">
-                    <button className="text-blue-600 font-bold hover:text-blue-800 hover:underline">View Matches</button>
-                  </td>
+<button 
+  onClick={() => navigate(`/recruiter/applications?jobId=${job.id}`)}
+  className="text-blue-600 font-bold hover:text-blue-800 hover:underline"
+>
+  View Matches
+</button>                
+  </td>
                 </tr>
               ))}
             </tbody>

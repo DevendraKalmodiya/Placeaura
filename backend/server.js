@@ -173,6 +173,82 @@ app.post('/api/jobs', async (req, res) => {
   }
 });
 
+// --- GET ALL APPLICATIONS FOR A RECRUITER ---
+app.get('/api/recruiter/applications/:recruiterId', async (req, res) => {
+  const { recruiterId } = req.params;
+
+  try {
+    const query = `
+      SELECT 
+        a.id AS application_id,
+        a.job_id,        -- ADD THIS LINE
+        a.status,
+        a.match_score,
+        a.applied_at,
+        j.title AS job_title,
+        u.name AS student_name,
+        u.email AS student_email,
+        u.resume_url
+      FROM applications a
+      JOIN jobs j ON a.job_id = j.id
+      JOIN users u ON a.student_id = u.id
+      WHERE j.recruiter_id = $1
+      ORDER BY (replace(a.match_score, '%', '')::int) DESC;
+    `;
+
+    const result = await pool.query(query, [recruiterId]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Fetch Inbox Error:", err.message);
+    res.status(500).json({ error: 'Failed to fetch applicants' });
+  }
+});
+
+// --- UPDATE APPLICATION STATUS (Accepted/Rejected) ---
+app.post('/api/applications/update-status', async (req, res) => {
+  const { applicationId, status } = req.body; // status: 'accepted' or 'rejected'
+
+  try {
+    await pool.query(
+      'UPDATE applications SET status = $1 WHERE id = $2',
+      [status, applicationId]
+    );
+    res.json({ message: `Status updated to ${status}` });
+  } catch (err) {
+    console.error("Status update error:", err.message);
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+// --- STUDENT APPLICATION ROUTE ---
+app.post('/api/applications/apply', async (req, res) => {
+  const { jobId, studentId, matchScore } = req.body;
+
+  try {
+    // Check if the student has already applied (to prevent duplicates)
+    const checkDuplicate = await pool.query(
+      'SELECT id FROM applications WHERE job_id = $1 AND student_id = $2',
+      [jobId, studentId]
+    );
+
+    if (checkDuplicate.rows.length > 0) {
+      return res.status(400).json({ message: 'You have already applied for this position.' });
+    }
+
+    // Insert the new application
+    const newApp = await pool.query(
+      'INSERT INTO applications (job_id, student_id, status, match_score) VALUES ($1, $2, $3, $4) RETURNING id',
+      [jobId, studentId, 'pending', matchScore]
+    );
+
+    res.status(201).json({ message: 'Application submitted successfully!', applicationId: newApp.rows[0].id });
+
+  } catch (err) {
+    console.error("Application Error:", err.message);
+    res.status(500).json({ error: 'Failed to submit application' });
+  }
+});
+
 // --- GET JOBS FOR SPECIFIC RECRUITER ---
 app.get('/api/recruiter-jobs/:recruiterId', async (req, res) => {
   const { recruiterId } = req.params;
