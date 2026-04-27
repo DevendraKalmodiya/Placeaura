@@ -52,7 +52,6 @@ export default function RecruiterJobs() {
 
       setStatusMsg('✅ Comprehensive Job successfully posted and vectorized!');
       
-      // Reset form
       setFormData({ 
         title: '', company: '', location: '', employment_type: 'Full-time', salary: '',
         summary: '', responsibilities: '', required_skills: '', qualifications: '', preferred_skills: '' 
@@ -73,6 +72,25 @@ export default function RecruiterJobs() {
     }
   };
 
+  const handleDelete = async (jobId) => {
+    const confirmDelete = window.confirm("Are you sure? This will permanently remove the job and all associated student applications.");
+    if (confirmDelete) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/jobs/${jobId}`, {
+          method: 'DELETE',
+        });
+        if (response.ok) {
+          setJobs(jobs.filter(job => job.id !== jobId));
+          alert("🗑️ Job deleted successfully.");
+        } else {
+          alert("❌ Failed to delete job.");
+        }
+      } catch (error) {
+        console.error("Delete error:", error);
+      }
+    }
+  };
+
   return (
     <div className="container mx-auto px-6 py-12 max-w-5xl">
       <div className="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
@@ -88,7 +106,6 @@ export default function RecruiterJobs() {
         </button>
       </div>
 
-      {/* --- THE UPGRADED COMPREHENSIVE JOB FORM --- */}
       {showForm && (
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 mb-8 animation-fade-in">
           <form onSubmit={handlePostJob} className="space-y-8">
@@ -99,25 +116,24 @@ export default function RecruiterJobs() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
-                  <input required name="title" type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                  <input required name="title" type="text" className="w-full border border-gray-300 rounded-md p-2.5 outline-none focus:ring-2 focus:ring-blue-500" 
                     value={formData.title} onChange={handleChange} placeholder="e.g. Full Stack Developer" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
-                  <input required name="company" type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                  <input required name="company" type="text" className="w-full border border-gray-300 rounded-md p-2.5 outline-none focus:ring-2 focus:ring-blue-500" 
                     value={formData.company} onChange={handleChange} placeholder="e.g. Placeaura Tech" />
                 </div>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                  <input required name="location" type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
-                    value={formData.location} onChange={handleChange} placeholder="e.g. Remote / Bangalore" />
+                  <input required name="location" type="text" className="w-full border border-gray-300 rounded-md p-2.5 outline-none focus:ring-2 focus:ring-blue-500" 
+                    value={formData.location} onChange={handleChange} placeholder="e.g. Remote" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
-                  <select name="employment_type" value={formData.employment_type} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                  <select name="employment_type" value={formData.employment_type} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2.5 outline-none bg-white">
                     <option value="Full-time">Full-time</option>
                     <option value="Part-time">Part-time</option>
                     <option value="Internship">Internship</option>
@@ -125,8 +141,8 @@ export default function RecruiterJobs() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Salary / Stipend (Optional)</label>
-                  <input name="salary" type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Salary / Stipend</label>
+                  <input name="salary" type="text" className="w-full border border-gray-300 rounded-md p-2.5 outline-none focus:ring-2 focus:ring-blue-500" 
                     value={formData.salary} onChange={handleChange} placeholder="e.g. ₹5–8 LPA" />
                 </div>
               </div>
@@ -136,45 +152,26 @@ export default function RecruiterJobs() {
             <div>
               <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">2. The Role</h3>
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Job Summary</label>
-                  <textarea required name="summary" rows="2" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
-                    value={formData.summary} onChange={handleChange} placeholder="2–3 lines about the purpose..." />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Key Responsibilities</label>
-                  <textarea required name="responsibilities" rows="4" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
-                    value={formData.responsibilities} onChange={handleChange} placeholder="- Build applications&#10;- Write clean code" />
-                </div>
+                <textarea required name="summary" rows="2" className="w-full border border-gray-300 rounded-md p-2.5 outline-none focus:ring-2 focus:ring-blue-500" 
+                  value={formData.summary} onChange={handleChange} placeholder="Job Summary..." />
+                <textarea required name="responsibilities" rows="4" className="w-full border border-gray-300 rounded-md p-2.5 outline-none focus:ring-2 focus:ring-blue-500" 
+                  value={formData.responsibilities} onChange={handleChange} placeholder="Key Responsibilities..." />
               </div>
             </div>
 
-            {/* SECTION 3: QUALIFICATIONS & SKILLS */}
+            {/* SECTION 3: SKILLS */}
             <div>
               <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-4">3. Qualifications & Skills</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Required Skills</label>
-                    <textarea required name="required_skills" rows="3" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
-                      value={formData.required_skills} onChange={handleChange} placeholder="React, Node.js..." />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Qualifications</label>
-                    <textarea required name="qualifications" rows="3" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
-                      value={formData.qualifications} onChange={handleChange} placeholder="B.Tech in CS..." />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Skills (Optional)</label>
-                  <input name="preferred_skills" type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" 
-                    value={formData.preferred_skills} onChange={handleChange} placeholder="e.g. AWS, Docker" />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <textarea required name="required_skills" rows="3" className="w-full border border-gray-300 rounded-md p-2.5 outline-none" 
+                  value={formData.required_skills} onChange={handleChange} placeholder="Required Skills..." />
+                <textarea required name="qualifications" rows="3" className="w-full border border-gray-300 rounded-md p-2.5 outline-none" 
+                  value={formData.qualifications} onChange={handleChange} placeholder="Qualifications..." />
               </div>
             </div>
 
             <button disabled={isProcessing} type="submit" 
-              className="w-full bg-gray-900 text-white font-bold py-4 rounded-md hover:bg-gray-800 disabled:bg-gray-400 transition-colors text-lg shadow-md">
+              className="w-full bg-gray-900 text-white font-bold py-4 rounded-md hover:bg-gray-800 disabled:bg-gray-400 transition-colors shadow-md">
               {isProcessing ? 'Generating AI Vector...' : 'Launch Role to AI Match Engine'}
             </button>
 
@@ -206,28 +203,17 @@ export default function RecruiterJobs() {
                     {job.title}
                     <div className="text-xs font-normal text-gray-500 mt-1">ID: #{job.id}</div>
                   </td>
-                  <td className="p-4 text-gray-600 font-medium">
-                    {job.location}
-                  </td>
+                  <td className="p-4 text-gray-600 font-medium">{job.location}</td>
                   <td className="p-4 text-center">
                     <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-sm font-bold shadow-sm">
                       {job.applicant_count || 0}
                     </span>
                   </td>
                   <td className="p-4">
-                    <div className="flex items-center gap-30">
-                      <button 
-                        onClick={() => navigate(`/recruiter/applications?jobId=${job.id}`)}
-                        className="text-blue-600 font-bold hover:underline whitespace-nowrap"
-                      >
-                        View Matches
-                      </button>
-                      <button 
-                        onClick={() => navigate(`/recruiter/post-job?editId=${job.id}`)}
-                        className="text-amber-600 font-bold hover:underline whitespace-nowrap"
-                      >
-                        Edit Job
-                      </button>
+                    <div className="flex items-center gap-6">
+                      <button onClick={() => navigate(`/recruiter/applications?jobId=${job.id}`)} className="text-blue-600 font-bold hover:underline whitespace-nowrap">View Matches</button>
+                      <button onClick={() => navigate(`/recruiter/post-job?editId=${job.id}`)} className="text-amber-600 font-bold hover:underline whitespace-nowrap">Edit</button>
+                      <button onClick={() => handleDelete(job.id)} className="text-red-600 font-bold hover:underline whitespace-nowrap">Delete</button>
                     </div>
                   </td>
                 </tr>

@@ -268,6 +268,27 @@ app.get('/api/jobs/details/:id', async (req, res) => {
   }
 });
 
+// --- DELETE A JOB ---
+app.delete('/api/jobs/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // First, delete associated applications to avoid foreign key constraints
+    await pool.query('DELETE FROM applications WHERE job_id = $1', [id]);
+    
+    // Then delete the job
+    const result = await pool.query('DELETE FROM jobs WHERE id = $1', [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    res.json({ message: 'Job and associated applications deleted successfully' });
+  } catch (err) {
+    console.error("Delete Job Error:", err.message);
+    res.status(500).json({ error: 'Failed to delete job' });
+  }
+});
+
 // --- STUDENT APPLICATION ROUTE ---
 app.post('/api/applications/apply', async (req, res) => {
   const { jobId, studentId, matchScore } = req.body;

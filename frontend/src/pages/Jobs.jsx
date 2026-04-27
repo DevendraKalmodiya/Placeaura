@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import JobCard from '../components/JobCard'; // Ensure this path is correct
 
 export default function Jobs() {
   const [jobs, setJobs] = useState([]);
@@ -26,36 +27,37 @@ export default function Jobs() {
   }, []);
 
   const handleApply = async (jobId, matchScore) => {
-  const studentId = localStorage.getItem('userId');
-  if (!studentId) {
-    alert("Please log in to apply.");
-    return;
-  }
-
-  try {
-    const response = await fetch('http://localhost:5000/api/applications/apply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        jobId, 
-        studentId, 
-        matchScore: matchScore || '0%' 
-      })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      alert("✅ Application submitted successfully!");
-    } else {
-      // THIS IS THE KEY: If status is 400, show the specific message from the backend
-      alert(`Notice: ${data.message}`); 
+    const studentId = localStorage.getItem('userId');
+    if (!studentId) {
+      alert("Please log in to apply.");
+      return;
     }
-  } catch (error) {
-    console.error("Apply error:", error);
-    alert("❌ Connection error. Check if your server is running.");
-  }
-};
+
+    try {
+      const response = await fetch('http://localhost:5000/api/applications/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          jobId, 
+          studentId, 
+          matchScore: matchScore || '0%' 
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("✅ Application submitted successfully!");
+        // Close modal if it was open
+        if (selectedJob) setSelectedJob(null);
+      } else {
+        alert(`Notice: ${data.message}`); 
+      }
+    } catch (error) {
+      console.error("Apply error:", error);
+      alert("❌ Connection error. Check if your server is running.");
+    }
+  };
 
   // Prevent scrolling on the background when modal is open
   useEffect(() => {
@@ -65,12 +67,6 @@ export default function Jobs() {
       document.body.style.overflow = 'unset';
     }
   }, [selectedJob]);
-
-  <JobCard 
-  job={job} 
-  handleApply={handleApply} 
-  setSelectedJob={setSelectedJob} // <--- Pass it here
-/>
 
   if (isLoading) {
     return (
