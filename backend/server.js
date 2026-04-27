@@ -204,6 +204,45 @@ app.get('/api/recruiter/applications/:recruiterId', async (req, res) => {
   }
 });
 
+// --- UPDATE EXISTING JOB ---
+app.put('/api/jobs/:id', async (req, res) => {
+  const { id } = req.params;
+  const { 
+    title, company, location, summary, responsibilities, 
+    required_skills, qualifications, preferred_skills, 
+    salary, employment_type 
+  } = req.body;
+
+  try {
+    // 1. Re-generate AI Context and Vector
+    const aiContextString = `Job Title: ${title} Company: ${company} Location: ${location} Summary: ${summary} Skills: ${required_skills}`;
+    const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
+    const result = await model.embedContent(aiContextString);
+    const formatVector = `[${result.embedding.values.join(',')}]`;
+
+    // 2. Update database
+    const updateQuery = `
+      UPDATE jobs SET 
+        title = $1, company = $2, location = $3, summary = $4, 
+        responsibilities = $5, required_skills = $6, qualifications = $7, 
+        preferred_skills = $8, salary = $9, employment_type = $10, 
+        embedding = $11, description = $12
+      WHERE id = $13
+    `;
+
+    await pool.query(updateQuery, [
+      title, company, location, summary, responsibilities, 
+      required_skills, qualifications, preferred_skills, 
+      salary, employment_type, formatVector, aiContextString, id
+    ]);
+
+    res.json({ message: 'Job updated and re-indexed by AI successfully!' });
+  } catch (err) {
+    console.error("Update Job Error:", err.message);
+    res.status(500).json({ error: 'Failed to update job' });
+  }
+});
+
 // --- UPDATE APPLICATION STATUS (Accepted/Rejected) ---
 app.post('/api/applications/update-status', async (req, res) => {
   const { applicationId, status } = req.body; // status: 'accepted' or 'rejected'
@@ -217,6 +256,15 @@ app.post('/api/applications/update-status', async (req, res) => {
   } catch (err) {
     console.error("Status update error:", err.message);
     res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+app.get('/api/jobs/details/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM jobs WHERE id = $1', [req.params.id]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).send("Error fetching job details");
   }
 });
 
