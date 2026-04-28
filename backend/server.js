@@ -181,7 +181,7 @@ app.get('/api/recruiter/applications/:recruiterId', async (req, res) => {
     const query = `
       SELECT 
         a.id AS application_id,
-        a.job_id,        -- ADD THIS LINE
+        a.job_id,
         a.status,
         a.match_score,
         a.applied_at,
@@ -292,7 +292,6 @@ app.delete('/api/jobs/:id', async (req, res) => {
 // --- STUDENT APPLICATION ROUTE ---
 app.post('/api/applications/apply', async (req, res) => {
   const { jobId, studentId, matchScore } = req.body;
-
   try {
     // Check if the student has already applied (to prevent duplicates)
     const checkDuplicate = await pool.query(
@@ -315,6 +314,58 @@ app.post('/api/applications/apply', async (req, res) => {
   } catch (err) {
     console.error("Application Error:", err.message);
     res.status(500).json({ error: 'Failed to submit application' });
+  }
+});
+
+app.post('/api/ats/calculate', async (req, res) => {
+  const { studentId, resumeText, resumeName } = req.body;
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    
+    const prompt = `
+      Act as an expert ATS optimizer. 
+      Analyze the following resume text and provide:
+      1. An overall ATS Score out of 100.
+      2. Five specific, actionable feedback points to improve the score.
+      
+      Format the output STRICTLY as a JSON object:
+      { "score": 85, "feedback": ["point 1", "point 2", "..."] }
+
+      Resume Text: ${resumeText}
+    `;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    
+    // Safety: Strip markdown backticks if Gemini includes them
+    const cleanJson = response.text().replace(/```json|```/g, "").trim();
+    const data = JSON.parse(cleanJson);
+
+    // Save to history table
+    await pool.query(
+      'INSERT INTO ats_history (student_id, score, feedback, resume_name) VALUES ($1, $2, $3, $4)',
+      [studentId, data.score, JSON.stringify(data.feedback), resumeName]
+    );
+
+    res.json(data);
+  } catch (err) {
+    console.error("ATS Calculation Error:", err);
+    res.status(500).json({ error: "Failed to calculate ATS score" });
+  }
+});
+
+// --- NEW: FETCH ATS HISTORY ROUTE ---
+app.get('/api/ats/history/:studentId', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM ats_history WHERE student_id = $1 ORDER BY calculated_at DESC',
+      [req.params.studentId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("History Fetch Error:", err);
+    res.status(500).send("Error fetching history");
   }
 });
 

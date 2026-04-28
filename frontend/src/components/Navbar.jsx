@@ -39,6 +39,13 @@ export default function Navbar() {
               <>
                 <Link to="/student-dashboard" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Dashboard</Link>
                 <Link to="/jobs" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Jobs Board</Link>
+                
+                {/* --- NEW ATS OPTIMIZER LINK --- */}
+                <Link to="/ats" className="flex items-center gap-1.5 text-gray-600 hover:text-blue-600 font-medium transition-colors">
+                  <span className="bg-blue-100 text-blue-600 text-[10px] px-1.5 py-0.5 rounded font-black uppercase">New</span>
+                  ATS Optimizer
+                </Link>
+
                 <Link to="/profile" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">My Profile</Link>
               </>
             )}
@@ -48,9 +55,9 @@ export default function Navbar() {
               <>
                 <Link to="/recruiter/jobs" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Jobs</Link>
                 <Link to="/recruiter/profile" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">Profile</Link>
-                <Link to="/recruiter/applications" className="hover:text-blue-600 font-bold">
-                Applications
-</Link>              
+                <Link to="/recruiter/applications" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">
+                  Applications
+                </Link>              
               </>
             )}
 

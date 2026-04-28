@@ -14,6 +14,8 @@ import RecruiterJobs from './pages/RecruiterJobs';
 import RecruiterProfile from './pages/RecruiterProfile';
 import Applications from './pages/Applications';
 import PostJob from './pages/PostJob';
+import ATS from './pages/ATS';
+
 
 // 🛡️ THE SECURITY GUARD COMPONENT
 const ProtectedRoute = ({ children, allowedRole }) => {
@@ -62,6 +64,9 @@ export default function App() {
               <Profile />
             </ProtectedRoute>
           } />
+
+          <Route path="/jobs" element={<Jobs />} />
+          <Route path="/ats" element={<ATS />} />
 
          {/* 🏢 RECRUITER WORLD */}
           {/* Redirect the old login path to the new Jobs page */}
