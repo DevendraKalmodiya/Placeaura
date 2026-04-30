@@ -33,7 +33,8 @@ export default function Applications() {
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
-      const response = await fetch('http://localhost:5000/api/applications/update-status', {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/applications/update-status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ applicationId: id, status: newStatus })

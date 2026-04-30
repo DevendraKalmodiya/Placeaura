@@ -11,6 +11,13 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 
 const app = express();
+const { createClient } = require('@supabase/supabase-js');
+
+// Initialize Supabase Client
+const supabase = createClient(
+  process.env.SUPABASE_URL, 
+  process.env.SUPABASE_ANON_KEY
+);
 
 // ==========================================
 // 1. SETUP & CONFIGURATION
@@ -389,69 +396,53 @@ app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded.' });
 
-    const userId = req.body.userId; 
-    const filename = req.file.filename;
-    const filePath = req.file.path;
+    const userId = req.body.userId;
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const fileName = `${userId}-${Date.now()}.pdf`;
 
-    // Process AI embeddings if we have a User ID and it's a PDF
-    if (userId && req.file.mimetype === 'application/pdf') {
-      try {
-        // 1. Read the PDF File
-        const dataBuffer = fs.readFileSync(filePath);
-        
-        // 2. Extract the raw text cleanly
-        const pdfData = await pdfParse(dataBuffer);
-        const resumeText = pdfData.text;
+    // 1. Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('resumes')
+      .upload(fileName, fileBuffer, {
+        contentType: 'application/pdf',
+        upsert: true
+      });
 
-        console.log(`\n📄 PDF Extracted! Text length is: ${resumeText?.length} characters.`);
+    if (uploadError) throw uploadError;
 
-        if (!resumeText || resumeText.trim().length === 0) {
-            throw new Error("PDF read successfully, but no text found (Image/Scan).");
-        }
+    // 2. Get Public URL for the file
+    const { data: publicUrlData } = supabase.storage
+      .from('resumes')
+      .getPublicUrl(fileName);
 
-        console.log(`🤖 Sending ${resumeText.length} characters to Gemini...`);
+    const publicUrl = publicUrlData.publicUrl;
 
-        // 3. Ask Gemini for the Semantic Vector (3072 dimensions)
-        const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
-        const result = await model.embedContent(resumeText);
-        
-        const vectorArray = result.embedding.values;
-        const formatVector = `[${vectorArray.join(',')}]`;
+    // 3. Process AI Embedding (Using local file before cleaning up)
+    const dataBuffer = fs.readFileSync(req.file.path);
+    const pdfData = await pdfParse(dataBuffer);
+    const resumeText = pdfData.text;
 
-        console.log(`✅ Gemini successfully generated the 3072-dimension vector!`);
+    const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
+    const result = await model.embedContent(resumeText);
+    const formatVector = `[${result.embedding.values.join(',')}]`;
 
-        // 4. Save file path AND Gemini embedding to Supabase
-        await pool.query(
-          'UPDATE users SET resume_url = $1, profile_embedding = $2 WHERE id = $3', 
-          [filename, formatVector, userId]
-        );
+    // 4. Update Database with the CLOUD URL instead of filename
+    await pool.query(
+      'UPDATE users SET resume_url = $1, profile_embedding = $2 WHERE id = $3',
+      [publicUrl, formatVector, userId]
+    );
 
-        return res.status(200).json({ 
-          message: 'Resume analyzed and AI Profile generated successfully!',
-          filename: filename
-        });
+    // 5. Clean up: Delete local temp file
+    fs.unlinkSync(req.file.path);
 
-      } catch (aiError) {
-        console.error("AI Processing Error:", aiError.message);
-        // Fallback: Save file even if AI fails
-        await pool.query('UPDATE users SET resume_url = $1 WHERE id = $2', [filename, userId]);
-        return res.status(200).json({ 
-          message: 'Resume saved, but AI analysis failed temporarily.',
-          filename: filename
-        });
-      }
-    } 
-
-    // If it's a DOCX or no User ID, just save the file normally
-    if (userId) {
-      await pool.query('UPDATE users SET resume_url = $1 WHERE id = $2', [filename, userId]);
-    }
-
-    res.status(200).json({ message: 'Resume uploaded successfully!', filename: filename });
+    res.status(200).json({ 
+      message: 'Resume uploaded to cloud and analyzed!', 
+      resumeUrl: publicUrl 
+    });
 
   } catch (err) {
-    console.error("Upload Route Error:", err.message);
-    res.status(500).json({ message: 'Server error during file upload.' });
+    console.error("Cloud Upload Error:", err.message);
+    res.status(500).json({ message: 'Cloud storage failed.' });
   }
 });
 
@@ -566,3 +557,14 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Agentic AI Backend (Gemini Powered) running flawlessly on port ${PORT}`);
 });
+
+module.exports = app;
+
+
+
+
+
+
+
+
+
