@@ -16,7 +16,7 @@ const { createClient } = require('@supabase/supabase-js');
 // Initialize Supabase Client
 const supabase = createClient(
   process.env.SUPABASE_URL, 
-  process.env.SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 // ==========================================
@@ -48,14 +48,29 @@ pool.on('error', (err, client) => {
 });
 
 // ==========================================
-// 2. FILE UPLOAD SETUP (MULTER)
+// const os = require('os');
+
 // ==========================================
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+// 2. FILE UPLOAD SETUP (MULTER - VERCEL READY)
+// ==========================================
+
+// In production (Vercel), use the OS temp directory. Locally, keep using your uploads folder.
+const uploadDir = process.env.NODE_ENV === 'production' 
+  ? os.tmpdir() 
+  : path.join(__dirname, 'uploads');
+
+// Only try to create the folder locally. Vercel's temp folder already exists.
+if (process.env.NODE_ENV !== 'production' && !fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
 });
 
 const upload = multer({ 

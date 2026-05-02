@@ -23,7 +23,7 @@ export default function ATS() {
     // For this demo, we'll send a placeholder or the filename to simulate the analysis.
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await fetch('${API_URL}/ats/calculate', {
+      const res = await fetch(`${API_URL}/api/ats/calculate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

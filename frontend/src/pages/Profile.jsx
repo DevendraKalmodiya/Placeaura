@@ -43,7 +43,8 @@ export default function Profile() {
   const handleFileUpload = async (event) => {
     event.preventDefault();
     
-    const userId = localStorage.getItem('userId');
+    // Fallback if userId is missing from dedicated localStorage item
+    const userId = localStorage.getItem('userId') || user.id;
 
     if (!selectedFile) {
       setMessage({ text: 'Please select a resume to upload first.', type: 'error' });
@@ -58,7 +59,6 @@ export default function Profile() {
     setIsUploading(true);
     setMessage({ text: '🤖 Generating 3072-Dimension AI Vector... Please wait.', type: 'info' });
 
-    // Pack the file and the ID for the backend
     const formData = new FormData();
     formData.append('resume', selectedFile);
     formData.append('userId', userId); 
@@ -75,12 +75,13 @@ export default function Profile() {
       if (response.ok) {
         setMessage({ text: data.message || '✅ AI Profile generated successfully!', type: 'success' });
         
-        // Update local UI state AND LocalStorage so the "View PDF" button appears instantly
-        const updatedUser = { ...user, resume_url: data.filename };
+        // --- FIXED PROPERTY BINDING ---
+        // We use data.resumeUrl which holds your Supabase public link
+        const updatedUser = { ...user, resume_url: data.resumeUrl };
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
         
-        // Clear input
+        // Clear file input
         setSelectedFile(null);
         document.getElementById('resume-upload-input').value = '';
       } else {
@@ -135,8 +136,10 @@ export default function Profile() {
                   <div>
                     <p className="font-extrabold text-lg">Active Resume Uploaded</p>
                     <p className="text-sm opacity-90 mt-1 mb-3">Your AI profile is actively ranking jobs.</p>
+                    
+                    {/* --- FIXED VIEW BUTTON LINK --- */}
                     <a 
-                      href={`http://localhost:5000/uploads/${user.resume_url}`} 
+                      href={user.resume_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-green-700 transition-colors inline-block"
