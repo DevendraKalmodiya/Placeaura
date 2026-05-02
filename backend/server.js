@@ -3,6 +3,7 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
+const os = require('os'); // For handling file uploads in a Vercel-compatible way
 const path = require('path');
 const fs = require('fs');
 const pdfParse = require('pdf-parse');
