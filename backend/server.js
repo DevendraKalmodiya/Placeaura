@@ -546,6 +546,32 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// --- UPDATE RECRUITER PROFILE ---
+app.put('/api/recruiter/profile/:id', async (req, res) => {
+  const { id } = req.params;
+  const { company_name, website, bio } = req.body;
+
+  try {
+    const updateQuery = `
+      UPDATE users 
+      SET company_name = $1, website = $2, bio = $3 
+      WHERE id = $4 
+      RETURNING id, name, email, role, company_name, website, bio;
+    `;
+
+    const result = await pool.query(updateQuery, [company_name, website, bio, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ message: 'Profile updated successfully', user: result.rows[0] });
+  } catch (err) {
+    console.error("Profile Update Error:", err.message);
+    res.status(500).json({ error: 'Failed to update recruiter profile' });
+  }
+});
+
 // --- ADMIN DASHBOARD STATS ---
 app.get('/api/admin/stats', async (req, res) => {
   try {
