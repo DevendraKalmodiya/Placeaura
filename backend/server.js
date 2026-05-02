@@ -576,6 +576,9 @@ app.listen(PORT, () => {
 
 module.exports = app;
 
+app.get('/test', (req, res) => {
+  res.send('Backend working');
+});
 
 
 
