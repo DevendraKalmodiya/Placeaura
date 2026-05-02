@@ -413,52 +413,64 @@ app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded.' });
 
     const userId = req.body.userId;
+
+    // Sanitize the file name to avoid URL parsing issues
+    const cleanOriginalName = req.file.originalname
+      .replace(/[^a-zA-Z0-9]/g, '-')
+      .toLowerCase();
+    const fileName = `${userId}-${Date.now()}-${cleanOriginalName}`;
+
+    // Read the file directly from Multer's temp disk storage
     const fileBuffer = fs.readFileSync(req.file.path);
-    const fileName = `${userId}-${Date.now()}.pdf`;
 
-    // 1. Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('resumes')
-      .upload(fileName, fileBuffer, {
-        contentType: 'application/pdf',
+    // 1. Concurrent Tasks: Start both Supabase Storage upload and PDF parsing together
+    const [uploadResponse, pdfData] = await Promise.all([
+      supabase.storage.from('resumes').upload(fileName, fileBuffer, {
+        contentType: req.file.mimetype,
         upsert: true
-      });
+      }),
+      pdfParse(fileBuffer)
+    ]);
 
-    if (uploadError) throw uploadError;
+    if (uploadResponse.error) throw uploadResponse.error;
 
-    // 2. Get Public URL for the file
-    const { data: publicUrlData } = supabase.storage
-      .from('resumes')
-      .getPublicUrl(fileName);
-
-    const publicUrl = publicUrlData.publicUrl;
-
-    // 3. Process AI Embedding (Using local file before cleaning up)
-    const dataBuffer = fs.readFileSync(req.file.path);
-    const pdfData = await pdfParse(dataBuffer);
+    const publicUrl = supabase.storage.from('resumes').getPublicUrl(fileName).data.publicUrl;
     const resumeText = pdfData.text;
 
+    // 2. Generate the Embedding with Gemini 
     const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
-    const result = await model.embedContent(resumeText);
-    const formatVector = `[${result.embedding.values.join(',')}]`;
+    const embeddingResult = await model.embedContent(resumeText);
+    const formatVector = `[${embeddingResult.embedding.values.join(',')}]`;
 
-    // 4. Update Database with the CLOUD URL instead of filename
+    // 3. Update the Database
     await pool.query(
       'UPDATE users SET resume_url = $1, profile_embedding = $2 WHERE id = $3',
       [publicUrl, formatVector, userId]
     );
 
-    // 5. Clean up: Delete local temp file
-    fs.unlinkSync(req.file.path);
+    // 4. Clean up the temp file
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
 
-    res.status(200).json({ 
-      message: 'Resume uploaded to cloud and analyzed!', 
+    // Immediately respond to the client
+    return res.status(200).json({ 
+      message: '✅ AI Profile generated successfully!', 
       resumeUrl: publicUrl 
     });
 
   } catch (err) {
-    console.error("Cloud Upload Error:", err.message);
-    res.status(500).json({ message: 'Cloud storage failed.' });
+    console.error("Critical Cloud Upload Error:", err);
+    
+    // Safety cleanup in case of failure
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    return res.status(500).json({ 
+      error: 'Cloud storage and analysis failed.', 
+      details: err.message 
+    });
   }
 });
 
