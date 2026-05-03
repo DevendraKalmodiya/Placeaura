@@ -643,7 +643,7 @@ app.post('/api/jobs/sync/arbeitnow', async (req, res) => {
       const insertQuery = `
         INSERT INTO jobs (
           title, company, description, location, 
-          is_external, external_apply_url, profile_embedding
+          is_external, external_apply_url, embedding
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       `;
 

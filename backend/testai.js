@@ -16,5 +16,3 @@ async function list() {
 list();
 
 vercel.app
-
-Invoke-RestMethod -Uri "https://placeaurabackend-git-test-feature-devendrakalmodiyas-projects.vercel.app/api/jobs/sync/arbeitnow" -Method Post
