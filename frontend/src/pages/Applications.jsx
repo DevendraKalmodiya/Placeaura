@@ -132,7 +132,7 @@ export default function Applications() {
       : `${API_URL}/uploads/${app.resume_url}`
   } 
   target="_blank" 
-  rel="noreferrer"
+  rel="noopener noreferrer"
   className="text-blue-600 font-bold hover:underline flex items-center gap-1"
 >
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

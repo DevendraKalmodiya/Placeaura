@@ -230,13 +230,23 @@ export default function Jobs() {
             </div>
 
             <div className="p-4 border-t border-gray-200 bg-white z-10">
-              <button 
-                onClick={() => handleApply(selectedJob.id, selectedJob.match_percentage)} 
-                className="w-full bg-blue-600 text-white text-lg py-4 rounded-xl font-bold shadow-md hover:bg-blue-700 hover:-translate-y-0.5 transition-all flex justify-center items-center gap-2"
-              >
-                Apply Now 
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-              </button>
+              {job.is_external ? (
+  <a
+    href={job.external_apply_url}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="bg-green-600 text-white px-4 py-2 rounded-md font-bold hover:bg-green-700 transition inline-block text-center"
+  >
+    Apply Now
+  </a>
+) : (
+  <button
+    onClick={() => handleApplyInternal(job.id)}
+    className="bg-blue-600 text-white px-4 py-2 rounded-md font-bold hover:bg-blue-700 transition"
+  >
+    Apply Now
+  </button>
+)}
             </div>
 
           </div>

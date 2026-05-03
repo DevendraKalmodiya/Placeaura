@@ -604,6 +604,75 @@ app.get('/api/admin/stats', async (req, res) => {
   }
 });
 
+// --- ARBEITNOW JOB AGGREGATION & VECTORIZATION ---
+app.post('/api/jobs/sync/arbeitnow', async (req, res) => {
+  try {
+    console.log("Fetching jobs from Arbeitnow...");
+    
+    // 1. Fetch from Arbeitnow Open API
+    const response = await fetch('https://www.arbeitnow.com/api/job-board-api');
+    if (!response.ok) throw new Error('Failed to fetch from Arbeitnow');
+    
+    const data = await response.json();
+    const externalJobs = data.data; // Arbeitnow wraps listings in a "data" array
+
+    let addedCount = 0;
+
+    // 2. Process up to 5 jobs at a time to prevent API rate limits
+    const jobsToProcess = externalJobs.slice(0, 5);
+
+    for (const job of jobsToProcess) {
+      // Deduplicate: Check if job already exists by title and company
+      const checkExist = await pool.query(
+        'SELECT id FROM jobs WHERE title = $1 AND company_name = $2',
+        [job.title, job.company_name]
+      );
+
+      if (checkExist.rows.length > 0) {
+        continue; // Skip if already imported
+      }
+
+      // 3. Clean up the HTML description returned by Arbeitnow
+      const cleanDescription = job.description.replace(/<[^>]*>/g, '');
+
+      // 4. Generate AI Vector Embedding with Gemini
+      const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+      const embeddingResult = await model.embedContent(cleanDescription);
+      const formatVector = `[${embeddingResult.embedding.values.join(',')}]`;
+
+      // 5. Insert into the database
+      const insertQuery = `
+        INSERT INTO jobs (
+          title, company_name, description, location, 
+          is_external, external_apply_url, profile_embedding
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `;
+
+      await pool.query(insertQuery, [
+        job.title,
+        job.company_name,
+        cleanDescription.substring(0, 1000), // Trim if too long
+        job.location || 'Remote',
+        true,                                // is_external
+        job.url,                             // Original apply link
+        formatVector                         // AI Vector
+      ]);
+
+      addedCount++;
+    }
+
+    res.status(200).json({
+      message: 'Arbeitnow sync completed successfully',
+      jobsAnalyzed: jobsToProcess.length,
+      newJobsAdded: addedCount
+    });
+
+  } catch (err) {
+    console.error("Arbeitnow Sync Error:", err);
+    res.status(500).json({ error: 'Failed to sync with Arbeitnow', details: err.message });
+  }
+});
+
 // ==========================================
 // 4. SERVER START
 // ==========================================
