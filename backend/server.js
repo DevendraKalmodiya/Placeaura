@@ -614,17 +614,16 @@ app.post('/api/jobs/sync/arbeitnow', async (req, res) => {
     if (!response.ok) throw new Error('Failed to fetch from Arbeitnow');
     
     const data = await response.json();
-    const externalJobs = data.data; // Arbeitnow wraps listings in a "data" array
+    const externalJobs = data.data;
 
     let addedCount = 0;
-
-    // 2. Process up to 5 jobs at a time to prevent API rate limits
+    // Process up to 5 jobs at a time
     const jobsToProcess = externalJobs.slice(0, 5);
 
     for (const job of jobsToProcess) {
-      // Deduplicate: Check if job already exists by title and company
+      // ✅ Deduplicate Query: Using your existing 'company' column
       const checkExist = await pool.query(
-        'SELECT id FROM jobs WHERE title = $1 AND company_name = $2',
+        'SELECT id FROM jobs WHERE title = $1 AND company = $2',
         [job.title, job.company_name]
       );
 
@@ -632,30 +631,30 @@ app.post('/api/jobs/sync/arbeitnow', async (req, res) => {
         continue; // Skip if already imported
       }
 
-      // 3. Clean up the HTML description returned by Arbeitnow
+      // Clean HTML from description
       const cleanDescription = job.description.replace(/<[^>]*>/g, '');
 
-      // 4. Generate AI Vector Embedding with Gemini
+      // Generate AI Vector Embedding with Gemini
       const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
       const embeddingResult = await model.embedContent(cleanDescription);
       const formatVector = `[${embeddingResult.embedding.values.join(',')}]`;
 
-      // 5. Insert into the database
+      // ✅ Insert Query: Explicitly target the 'company' column
       const insertQuery = `
         INSERT INTO jobs (
-          title, company_name, description, location, 
+          title, company, description, location, 
           is_external, external_apply_url, profile_embedding
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       `;
 
       await pool.query(insertQuery, [
         job.title,
-        job.company_name,
-        cleanDescription.substring(0, 1000), // Trim if too long
+        job.company_name,                     // From Arbeitnow API
+        cleanDescription.substring(0, 1000), 
         job.location || 'Remote',
-        true,                                // is_external
-        job.url,                             // Original apply link
-        formatVector                         // AI Vector
+        true,                                 // is_external
+        job.url,                              // Original apply link
+        formatVector                          // AI Vector
       ]);
 
       addedCount++;
