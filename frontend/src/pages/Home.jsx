@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JobCard from '../components/JobCard';
-
+import { API_URL } from '../config';
 export default function Home() {
   const navigate = useNavigate();
   
@@ -42,7 +42,7 @@ export default function Home() {
   }
 
   try {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+   
     const response = await fetch(`${API_URL}/api/applications/apply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

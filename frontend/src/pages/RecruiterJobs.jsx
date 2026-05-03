@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import { API_URL } from '../config';
 export default function RecruiterJobs() {
   const [showForm, setShowForm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -42,7 +42,7 @@ export default function RecruiterJobs() {
 
     try {
       const recruiterId = localStorage.getItem('userId');
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+     
       const response = await fetch(`${API_URL}/api/jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import JobCard from '../components/JobCard'; // Ensure this path is correct
-
+import { API_URL } from '../config';
 export default function Jobs() {
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +34,7 @@ export default function Jobs() {
     }
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
       const response = await fetch(`${API_URL}/api/applications/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

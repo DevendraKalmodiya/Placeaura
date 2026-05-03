@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-
+import { API_URL } from '../config';
 export default function ATS() {
   const [file, setFile] = useState(null);
   const [score, setScore] = useState(null);
@@ -22,7 +22,7 @@ export default function ATS() {
     // Note: In a real app, you'd extract text from the PDF here. 
     // For this demo, we'll send a placeholder or the filename to simulate the analysis.
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
       const res = await fetch(`${API_URL}/api/ats/calculate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

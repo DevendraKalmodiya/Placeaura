@@ -1,5 +1,5 @@
 import { useState } from 'react';
-
+import { API_URL } from '../config';
 export default function JobCard({ job }) {
   // State to control the visibility of the popup modal
   const onApplyClick = async () => {
@@ -37,7 +37,6 @@ export default function JobCard({ job }) {
 
 
   try {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     const response = await fetch(`${API_URL}/api/applications/apply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

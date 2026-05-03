@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-
+import { API_URL } from '../config';
 export default function Signup() {
   const navigate = useNavigate();
   
@@ -31,7 +31,7 @@ export default function Signup() {
 
     try {
       // Send data to the Node.js backend
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+     
       const response = await fetch(`${API_URL}/api/signup`, {
         method: 'POST',
         headers: {

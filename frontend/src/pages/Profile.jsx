@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import { API_URL } from '../config';
 export default function Profile() {
   const navigate = useNavigate();
   
@@ -64,7 +64,7 @@ export default function Profile() {
     formData.append('userId', userId); 
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+     
       const response = await fetch(`${API_URL}/api/upload-resume`, {
         method: 'POST',
         body: formData,

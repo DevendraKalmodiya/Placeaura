@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-
+import { API_URL } from '../config';
 export default function Applications() {
   const [applications, setApplications] = useState([]);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -33,7 +33,7 @@ export default function Applications() {
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
       const response = await fetch(`${API_URL}/api/applications/update-status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

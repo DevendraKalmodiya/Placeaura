@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-
+import { API_URL } from '../config';
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -12,7 +12,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchAdminStats = async () => {
       try {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        
         const response = await fetch(`${API_URL}/api/admin/stats`);
         if (response.ok) {
           const data = await response.json();
