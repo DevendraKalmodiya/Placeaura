@@ -1,112 +1,168 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { API_URL } from '../config';
-export default function JobCard({ job }) {
-  // State to control the visibility of the popup modal
-  const onApplyClick = async () => {
-    await handleApply(job.id, job.match_percentage);
-    if (setSelectedJob) setSelectedJob(null); // <--- Now it exists!
-  };
 
+export default function JobCard({ job, handleApply, selectedJob, setSelectedJob }) {
   const [showModal, setShowModal] = useState(false);
 
-  // Parse the match percentage for color coding
+  // --- Parse the match percentage for color coding ---
   const matchString = job.match_percentage || job.match || "0%";
   const matchNumber = parseInt(matchString.toString().replace('%', ''), 10);
 
-  let colorClasses = "bg-red-100 text-red-800 border-red-200"; 
-  if (matchNumber >= 75) {
-    colorClasses = "bg-green-100 text-green-800 border-green-200"; 
-  } else if (matchNumber >= 50) {
-    colorClasses = "bg-yellow-100 text-yellow-800 border-yellow-200"; 
+  // Set colors based on score (Matching image's 72% green)
+  let colorClasses = "bg-green-50 text-green-700 border-green-200"; 
+  if (matchNumber < 50) {
+    colorClasses = "bg-red-50 text-red-700 border-red-200"; 
+  } else if (matchNumber < 75) {
+    // Standard green-ish yellow for 50-74%
+    colorClasses = "bg-yellow-50 text-yellow-700 border-yellow-200"; 
   }
 
-  // Prevent scrolling on the main page when the modal is open
-  if (showModal) {
-    document.body.style.overflow = 'hidden';
-  } else {
-    document.body.style.overflow = 'unset';
-  }
-
-  const handleApply = async (jobId, matchScore) => {
-  const studentId = localStorage.getItem('userId');
-  
-  if (!studentId) {
-    alert("Please log in to apply.");
-    return;
-  }
-
-
-  try {
-    const response = await fetch(`${API_URL}/api/applications/apply`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        jobId, 
-        studentId, 
-        matchScore: matchScore || '0%' // Pass the AI match score
-      })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      alert("✅ Success! Your AI-profile has been submitted to the recruiter.");
-      setSelectedJob(null); // Close the modal
+  // --- Apply Scroll Locking ---
+  useEffect(() => {
+    if (showModal) {
+      document.body.style.overflow = 'hidden';
     } else {
-      alert(data.message || "❌ Something went wrong.");
+      document.body.style.overflow = 'unset';
     }
-  } catch (error) {
-    console.error("Apply error:", error);
-    alert("❌ Server error. Check your connection.");
-  }
-};
+    // Cleanup to prevent lingering styles on unmount
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showModal]);
+
+  // --- Unified Apply Logic ---
+  const onApplyClick = async () => {
+    const studentId = localStorage.getItem('userId');
+    if (!studentId) {
+      alert("Please log in to apply.");
+      return;
+    }
+
+    // Call the application logic from parent
+    if (handleApply) {
+      await handleApply(job.id, job.match_percentage);
+    }
+    
+    // Close parent details modal if it's open
+    if (setSelectedJob) {
+      setSelectedJob(null);
+    }
+    
+    // Close this Job Card's details modal
+    setShowModal(false);
+  };
 
   return (
     <>
-      {/* 1. THE MAIN JOB CARD */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow flex flex-col h-full">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">{job.title}</h3>
-            <p className="text-gray-600 text-sm font-medium">{job.company}</p>
+      {/* =======================================================
+          1. THE MAIN JOB CARD (RESTORING THE ORIGINAL LAYOUT)
+          ======================================================= */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+        
+        {/* Main Content Area */}
+        <div className="p-6">
+          
+          {/* ✅ FIXED LAYOUT: Top row containing Title/Company on left, Badge on right */}
+          <div className="flex justify-between items-start mb-4 gap-4">
+            
+            {/* 👈 Grouping Title & Company on the left */}
+            <div className="flex flex-col">
+              <h2 className="text-3xl font-extrabold text-gray-950 tracking-tight leading-tight">{job.title}</h2>
+              <p className="text-blue-600 font-bold text-xl mt-1.5">{job.company}</p>
+            </div>
+
+            {/* 👉 Grouping the Match Percentage Badge on the right */}
+            {job.match_percentage && job.match_percentage !== '0%' && (
+              <div className={`text-sm font-extrabold px-5 py-2.5 rounded-full border shadow-sm flex items-center justify-center whitespace-nowrap ${colorClasses}`}>
+                {job.match_percentage} Match
+              </div>
+            )}
           </div>
-          <span className={`text-xs font-bold px-2.5 py-1 rounded border shadow-sm ${colorClasses}`}>
-            {matchString}
-          </span>
+
+          {/* Metadata Row (Location, Type, Salary) */}
+          <div className="flex flex-wrap gap-3.5 mb-7">
+            <span className="bg-white text-gray-700 text-sm font-bold px-3 py-1.5 rounded-lg border border-gray-100">
+              📍 {job.location}
+            </span>
+            {job.employment_type && (
+              <span className="bg-white text-purple-700 text-sm font-bold px-3 py-1.5 rounded-lg border border-gray-100">
+                💼 {job.employment_type}
+              </span>
+            )}
+            {job.salary && (
+              <span className="bg-white text-yellow-700 text-sm font-bold px-3 py-1.5 rounded-lg border border-gray-100">
+                💰 {job.salary}
+              </span>
+            )}
+          </div>
+
+          {/* Short Description or Summary */}
+          <p className="text-gray-700 text-base leading-relaxed mb-8 line-clamp-2">
+            {job.summary || job.description || "No job summary provided."}
+          </p>
+
+          {/* ✅ FIXED LAYOUT: Side-by-Side Horizontal Buttons in Footer */}
+          <div className="flex flex-row gap-5 border-t border-gray-100 pt-6">
+            
+            <button 
+              onClick={() => setShowModal(true)}
+              className="flex-1 bg-white text-blue-600 border-2 border-blue-600 py-3.5 rounded-xl font-bold hover:bg-blue-50 transition-colors"
+            >
+              View Full Details
+            </button>
+
+            {job.is_external ? (
+              <a
+                href={job.external_apply_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-green-600 text-white py-3.5 rounded-xl font-bold shadow-md hover:bg-green-700 transition-colors text-center"
+              >
+                Apply on External Site
+              </a>
+            ) : (
+              <button 
+                onClick={onApplyClick}
+                className="flex-1 bg-blue-600 text-white py-3.5 rounded-xl font-bold shadow-md hover:bg-blue-700 transition-colors"
+              >
+                Quick Apply
+              </button>
+            )}
+          </div>
         </div>
-        
-        <p className="text-sm text-gray-500 mb-6 flex-grow">{job.location}</p>
-        
-        <button 
-          onClick={() => setShowModal(true)}
-          className="w-full bg-blue-50 text-blue-600 font-medium py-2 rounded border border-blue-200 hover:bg-blue-100 transition-colors mt-auto"
-        >
-          View Details
-        </button>
       </div>
 
-      {/* 2. THE 70% CENTERED MODAL POPUP */}
+      {/* =======================================================
+          2. THE 70% CENTERED MODAL POPUP (PREVIOUSLY COMPLETED FIX)
+          ======================================================= */}
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm">
           
-          {/* Dark blurred background overlay (clicking this closes the modal) */}
+          {/* Dark blurred background overlay */}
           <div 
-            className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+            className="absolute inset-0 bg-gray-950/60 transition-opacity"
             onClick={() => setShowModal(false)}
           ></div>
 
           {/* Modal Content Box - Covers 70% of desktop screens */}
-          <div className="relative bg-white w-[90%] md:w-[70%] max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col z-10 overflow-hidden">
+          <div className="relative bg-white w-[95%] md:w-[75%] max-w-6xl max-h-[92vh] rounded-2xl shadow-3xl flex flex-col z-10 overflow-hidden border border-gray-100">
             
             {/* Header Area */}
-            <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-start bg-gray-50">
+            <div className="px-9 py-7 border-b border-gray-100 flex justify-between items-start bg-gray-50 z-10">
               <div>
-                <h2 className="text-3xl font-extrabold text-gray-900">{job.title}</h2>
-                <p className="text-lg text-blue-600 font-semibold mt-1">{job.company} • <span className="text-gray-500">{job.location}</span></p>
+                <div className="flex items-center gap-4 mb-2">
+                  <h2 className="text-4xl font-extrabold text-gray-950 tracking-tight">{job.title}</h2>
+                  {job.match_percentage && job.match_percentage !== '0%' && (
+                    <span className={`text-xs font-extrabold px-3 py-1.5 rounded-full border border-green-200 whitespace-nowrap bg-green-50 text-green-700`}>
+                      {job.match_percentage} Match
+                    </span>
+                  )}
+                </div>
+                <p className="text-xl text-blue-600 font-bold">{job.company} • <span className="text-gray-500">{job.location}</span></p>
               </div>
               <button 
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors focus:outline-none"
+                className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2.5 rounded-full transition-colors focus:outline-none border border-gray-100 bg-white"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -114,67 +170,87 @@ export default function JobCard({ job }) {
               </button>
             </div>
 
-            {/* Scrollable Body Area (Description, Skills, Experience) */}
-            <div className="px-8 py-6 overflow-y-auto">
+            {/* Scrollable Body Area (Fixed & Full) */}
+            <div className="px-9 py-8 overflow-y-auto bg-white flex-1 space-y-9">
               
-              <div className="mb-8">
-                <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">Job Description</h3>
-                <p className="text-gray-600 leading-relaxed">
-                  We are looking for a highly capable {job.title} to join our engineering team at {job.company}. You will be responsible for building high-quality, scalable applications, participating in code reviews, and collaborating seamlessly with cross-functional teams to deliver outstanding products.
-                </p>
+              <div className="flex flex-wrap gap-4">
+                <span className="bg-white text-gray-700 text-sm font-bold px-4 py-2 rounded-lg border border-gray-100 shadow-sm">📍 {job.location}</span>
+                {job.employment_type && (
+                  <span className="bg-white text-purple-700 text-sm font-bold px-4 py-2 rounded-lg border border-gray-100 shadow-sm">💼 {job.employment_type}</span>
+                )}
+                {job.salary && (
+                  <span className="bg-white text-yellow-700 text-sm font-bold px-4 py-2 rounded-lg border border-gray-100 shadow-sm">💰 {job.salary}</span>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">Required Skills</h3>
-                  <ul className="list-disc list-inside text-gray-600 space-y-2">
-                    <li>Proficiency in modern web technologies</li>
-                    <li>Experience with React.js and RESTful APIs</li>
-                    <li>Strong problem-solving abilities</li>
-                    <li>Familiarity with Git and Agile workflows</li>
-                  </ul>
-                </div>
-                
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 border-b pb-2">Experience & Qualifications</h3>
-                  <ul className="list-disc list-inside text-gray-600 space-y-2">
-                    <li>B.Tech / B.E in Computer Science or related field</li>
-                    <li>0-2 years of relevant industry experience</li>
-                    <li>Excellent communication and teamwork skills</li>
-                  </ul>
-                </div>
+              <div className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm">
+                <h3 className="text-xl font-extrabold text-gray-950 mb-4 border-b border-gray-100 pb-3">About the Role</h3>
+                <p className="text-gray-700 text-base leading-relaxed">{job.summary || job.description}</p>
               </div>
 
-              <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-gray-900 text-lg">AI Match Analysis</h4>
-                  <p className="text-sm text-gray-600 mt-1">Based on your semantic profile embeddings.</p>
+              {job.responsibilities && (
+                <div className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm">
+                  <h3 className="text-xl font-extrabold text-gray-900 mb-5 border-b border-gray-100 pb-3">Key Responsibilities</h3>
+                  <ul className="list-disc pl-5 space-y-3 text-gray-700 text-base">
+                    {job.responsibilities.split('\n').map((item, index) => 
+                      item.trim() ? <li key={index}>{item.replace(/^-/, '').trim()}</li> : null
+                    )}
+                  </ul>
                 </div>
-                <span className={`text-lg font-extrabold px-4 py-2 rounded-lg border shadow-sm ${colorClasses}`}>
+              )}
+
+              {job.required_skills && (
+                <div className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm">
+                  <h3 className="text-xl font-extrabold text-gray-900 mb-5 border-b border-gray-100 pb-3">Required Technical Skills</h3>
+                  <div className="text-gray-700 text-base whitespace-pre-line leading-relaxed">{job.required_skills}</div>
+                </div>
+              )}
+
+              {job.preferred_skills && (
+                <div className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm">
+                  <h3 className="text-xl font-extrabold text-gray-900 mb-3">Preferred Skills / Bonus</h3>
+                  <p className="text-gray-600 text-base italic leading-relaxed">{job.preferred_skills}</p>
+                </div>
+              )}
+
+              <div className="bg-blue-50 p-7 rounded-2xl border border-blue-100 flex items-center justify-between shadow-sm">
+                <div>
+                  <h4 className="font-extrabold text-gray-950 text-xl">AI Match Analysis</h4>
+                  <p className="text-gray-600 text-base mt-1.5">Based on your semantic profile embeddings matching the job profile.</p>
+                </div>
+                <div className={`text-lg font-extrabold px-5 py-3 rounded-xl border shadow-sm ${colorClasses}`}>
                   {matchString} Match
-                </span>
+                </div>
               </div>
 
             </div>
 
-            {/* Footer Area with Apply Button */}
-            <div className="px-8 py-5 border-t border-gray-100 bg-white flex justify-end">
+            {/* Footer Area with Centered Apply Button */}
+            <div className="px-9 py-6 border-t border-gray-100 bg-white z-10 flex flex-row justify-center gap-5">
               <button 
-                className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-lg font-medium hover:bg-gray-200 transition-colors mr-4" 
+                className="flex-1 bg-gray-100 text-gray-700 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition-colors" 
                 onClick={() => setShowModal(false)}
               >
-                Cancel
+                Close Details
               </button>
-              <button 
-                className="bg-blue-600 text-white px-8 py-2.5 rounded-lg font-bold hover:bg-blue-700 shadow-md transition-all hover:-translate-y-0.5"
-                onClick={() => {
-                  handleApply(job.id, job.match_percentage);
-                  alert(`Application for ${job.title} at ${job.company} submitted successfully!`);
-                  setShowModal(false);
-                }}
-              >
-                Apply for this Role
-              </button>
+              
+              {job.is_external ? (
+                <a
+                  href={job.external_apply_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-green-600 text-white py-3.5 rounded-xl font-bold hover:bg-green-700 shadow-md transition-all hover:-translate-y-0.5 text-center"
+                >
+                  Apply Now
+                </a>
+              ) : (
+                <button 
+                  className="flex-1 bg-blue-600 text-white py-3.5 rounded-xl font-bold hover:bg-blue-700 shadow-md transition-all hover:-translate-y-0.5"
+                  onClick={onApplyClick}
+                >
+                  Quick Apply
+                </button>
+              )}
             </div>
 
           </div>

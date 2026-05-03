@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import JobCard from '../components/JobCard'; // Ensure this path is correct
 import { API_URL } from '../config';
+
 export default function Jobs() {
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +35,6 @@ export default function Jobs() {
     }
 
     try {
-      
       const response = await fetch(`${API_URL}/api/applications/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -67,6 +67,10 @@ export default function Jobs() {
     } else {
       document.body.style.overflow = 'unset';
     }
+    // Cleanup to prevent lingering styles on unmount
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [selectedJob]);
 
   if (isLoading) {
@@ -88,55 +92,18 @@ export default function Jobs() {
           <p className="text-gray-600 mt-2 text-lg">Jobs ranked by our Gemini Semantic Matching engine based on your profile.</p>
         </div>
 
+        {/* 1. THE MAIN JOBS LIST */}
         <div className="space-y-6">
           {jobs.length > 0 ? (
             jobs.map((job) => (
-              <div key={job.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-                
-                {/* --- MAIN JOB CARD --- */}
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">{job.title}</h2>
-                      <p className="text-blue-600 font-bold text-lg">{job.company}</p>
-                    </div>
-                    {job.match_percentage && job.match_percentage !== '0%' && (
-                      <div className="bg-green-50 text-green-700 text-sm font-extrabold px-4 py-2 rounded-full shadow-sm border border-green-200 whitespace-nowrap">
-                        {job.match_percentage} Match
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-3 mb-6">
-                    <span className="bg-white text-gray-700 text-sm font-bold px-3 py-1.5 rounded-lg border border-gray-200">📍 {job.location}</span>
-                    {job.employment_type && (
-                      <span className="bg-white text-purple-700 text-sm font-bold px-3 py-1.5 rounded-lg border border-gray-200">💼 {job.employment_type}</span>
-                    )}
-                    {job.salary && (
-                      <span className="bg-white text-yellow-700 text-sm font-bold px-3 py-1.5 rounded-lg border border-gray-200">💰 {job.salary}</span>
-                    )}
-                  </div>
-
-                  <p className="text-gray-700 text-base leading-relaxed mb-6 line-clamp-2">
-                    {job.summary || job.description || "No summary provided."}
-                  </p>
-
-                  <div className="flex gap-4 border-t border-gray-100 pt-6">
-                    <button 
-                      onClick={() => setSelectedJob(job)}
-                      className="flex-1 bg-white text-blue-600 border-2 border-blue-600 py-3 rounded-xl font-bold hover:bg-blue-50 transition-colors"
-                    >
-                      View Full Details
-                    </button>
-                    <button 
-                      onClick={() => handleApply(job.id, job.match_percentage)}
-                      className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-blue-700 transition-colors"
-                    >
-                      Quick Apply
-                    </button>
-                  </div>
-                </div>
-              </div>
+              /* ✅ Uses the JobCard child component and passes state props */
+              <JobCard 
+                key={job.id} 
+                job={job} 
+                handleApply={handleApply}
+                selectedJob={selectedJob}
+                setSelectedJob={setSelectedJob}
+              />
             ))
           ) : (
             <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-200">
@@ -148,9 +115,9 @@ export default function Jobs() {
         </div>
       </div>
 
-      {/* --- FLOATING MODAL CARD --- */}
+      {/* 2. THE FLOATING MODAL CARD FOR PARENT LOGIC */}
       {selectedJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white bg-opacity-80 backdrop-blur-md animation-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-md">
           
           <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-gray-200">
             
@@ -170,25 +137,35 @@ export default function Jobs() {
                 onClick={() => setSelectedJob(null)}
                 className="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full p-2 transition-colors"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
               </button>
             </div>
 
             <div className="p-6 overflow-y-auto bg-white flex-1">
               
               <div className="flex flex-wrap gap-3 mb-8">
-                <span className="bg-white text-gray-700 text-sm font-bold px-3 py-1.5 rounded-lg border border-gray-200">📍 {selectedJob.location}</span>
+                <span className="bg-white text-gray-700 text-sm font-bold px-3 py-1.5 rounded-lg border border-gray-200">
+                  📍 {selectedJob.location}
+                </span>
                 {selectedJob.employment_type && (
-                  <span className="bg-white text-purple-700 text-sm font-bold px-3 py-1.5 rounded-lg border border-gray-200">💼 {selectedJob.employment_type}</span>
+                  <span className="bg-white text-purple-700 text-sm font-bold px-3 py-1.5 rounded-lg border border-gray-200">
+                    💼 {selectedJob.employment_type}
+                  </span>
                 )}
                 {selectedJob.salary && (
-                  <span className="bg-white text-yellow-700 text-sm font-bold px-3 py-1.5 rounded-lg border border-gray-200">💰 {selectedJob.salary}</span>
+                  <span className="bg-white text-yellow-700 text-sm font-bold px-3 py-1.5 rounded-lg border border-gray-200">
+                    💰 {selectedJob.salary}
+                  </span>
                 )}
               </div>
 
               <div className="bg-white p-6 rounded-xl border border-gray-200 mb-6 shadow-sm">
                 <h3 className="text-lg font-extrabold text-gray-900 mb-2">About the Role</h3>
-                <p className="text-gray-700 leading-relaxed">{selectedJob.summary || selectedJob.description}</p>
+                <p className="text-gray-700 leading-relaxed">
+                  {selectedJob.summary || selectedJob.description}
+                </p>
               </div>
 
               {selectedJob.responsibilities && (
@@ -230,23 +207,23 @@ export default function Jobs() {
             </div>
 
             <div className="p-4 border-t border-gray-200 bg-white z-10">
-              {job.is_external ? (
-  <a
-    href={job.external_apply_url}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="bg-green-600 text-white px-4 py-2 rounded-md font-bold hover:bg-green-700 transition inline-block text-center"
-  >
-    Apply Now
-  </a>
-) : (
-  <button
-    onClick={() => handleApplyInternal(job.id)}
-    className="bg-blue-600 text-white px-4 py-2 rounded-md font-bold hover:bg-blue-700 transition"
-  >
-    Apply Now
-  </button>
-)}
+              {selectedJob.is_external ? (
+                <a
+                  href={selectedJob.external_apply_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition inline-block text-center shadow-md"
+                >
+                  Apply on External Site
+                </a>
+              ) : (
+                <button
+                  onClick={() => handleApply(selectedJob.id, selectedJob.match_percentage)}
+                  className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-blue-700 transition-colors"
+                >
+                  Quick Apply
+                </button>
+              )}
             </div>
 
           </div>
