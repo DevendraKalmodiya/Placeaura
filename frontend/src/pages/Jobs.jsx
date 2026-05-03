@@ -10,7 +10,7 @@ export default function Jobs() {
     const fetchJobs = async () => {
       try {
         const userId = localStorage.getItem('userId');
-        const response = await fetch(`http://localhost:5000/api/jobs${userId ? `?userId=${userId}` : ''}`);
+        const response = await fetch(`${API_URL}/api/jobs${userId ? `?userId=${userId}` : ''}`);
         
         if (response.ok) {
           const data = await response.json();

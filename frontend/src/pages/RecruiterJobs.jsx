@@ -17,7 +17,7 @@ export default function RecruiterJobs() {
   const fetchMyJobs = async () => {
     try {
       const recruiterId = localStorage.getItem('userId');
-      const response = await fetch(`http://localhost:5000/api/recruiter-jobs/${recruiterId}`);
+      const response = await fetch(`${API_URL}/api/recruiter-jobs/${recruiterId}`);
       if (response.ok) {
         const data = await response.json();
         setJobs(data);
@@ -77,7 +77,7 @@ export default function RecruiterJobs() {
     const confirmDelete = window.confirm("Are you sure? This will permanently remove the job and all associated student applications.");
     if (confirmDelete) {
       try {
-        const response = await fetch(`http://localhost:5000/api/jobs/${jobId}`, {
+        const response = await fetch(`${API_URL}/api/jobs/${jobId}`, {
           method: 'DELETE',
         });
         if (response.ok) {

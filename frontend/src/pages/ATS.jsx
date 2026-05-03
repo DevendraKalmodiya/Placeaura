@@ -11,7 +11,7 @@ export default function ATS() {
   const studentId = localStorage.getItem('userId');
 
   const fetchHistory = async () => {
-    const res = await fetch(`http://localhost:5000/api/ats/history/${studentId}`);
+    const res = await fetch(`${API_URL}/api/ats/history/${studentId}`);
     if (res.ok) setHistory(await res.json());
   };
 
@@ -145,7 +145,7 @@ export default function ATS() {
                     <td className="p-4 font-black text-blue-600">{h.score}%</td>
                     <td className="p-4">
   <button 
-    onClick={() => window.open(`http://localhost:5000/uploads/${h.resume_name}`, '_blank')}
+    onClick={() => window.open(`${API_URL}/uploads/${h.resume_name}`, '_blank')}
     className="text-gray-400 hover:text-blue-600 transition-colors"
   >
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

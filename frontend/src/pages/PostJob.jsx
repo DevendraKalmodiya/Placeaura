@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-
+import { API_URL } from '../config';
 export default function PostJob() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,7 +29,7 @@ export default function PostJob() {
     if (editId) {
       const fetchJobDetails = async () => {
         try {
-          const response = await fetch(`http://localhost:5000/api/jobs/details/${editId}`);
+          const response = await fetch(`${API_URL}/api/jobs/details/${editId}`);
           if (response.ok) {
             const data = await response.json();
             setFormData(data);
@@ -52,8 +52,8 @@ export default function PostJob() {
 
     const recruiterId = localStorage.getItem('userId');
     const url = editId 
-      ? `http://localhost:5000/api/jobs/${editId}` 
-      : 'http://localhost:5000/api/jobs';
+      ? `${API_URL}/api/jobs/${editId}` 
+      : `${API_URL}/api/jobs`;
     
     const method = editId ? 'PUT' : 'POST';
 

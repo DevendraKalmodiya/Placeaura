@@ -15,7 +15,7 @@ export default function Applications() {
   const fetchApplications = async () => {
     try {
       const recruiterId = localStorage.getItem('userId');
-      const response = await fetch(`http://localhost:5000/api/recruiter/applications/${recruiterId}`);
+      const response = await fetch(`${API_URL}/api/recruiter/applications/${recruiterId}`);
       if (response.ok) {
         const data = await response.json();
         setApplications(data);
@@ -129,7 +129,7 @@ export default function Applications() {
   href={
     app.resume_url?.startsWith("http") 
       ? app.resume_url 
-      : `http://localhost:5000/uploads/${app.resume_url}`
+      : `${API_URL}/uploads/${app.resume_url}`
   } 
   target="_blank" 
   rel="noreferrer"
