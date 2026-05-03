@@ -91,7 +91,7 @@ export default function Home() {
       {/* Live Job Listings */}
       <div className="container mx-auto px-6 py-12">
         <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
-          <h2 className="text-2xl font-bold text-gray-800">Top 9 Matches For You</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Top Matches For You</h2>
           <button onClick={() => navigate('/jobs')} className="text-blue-600 hover:text-blue-800 font-medium text-sm">
             View All Jobs &rarr;
           </button>

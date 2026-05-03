@@ -635,7 +635,7 @@ app.post('/api/jobs/sync/arbeitnow', async (req, res) => {
       const cleanDescription = job.description.replace(/<[^>]*>/g, '');
 
       // Generate AI Vector Embedding with Gemini
-      const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+      const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
       const embeddingResult = await model.embedContent(cleanDescription);
       const formatVector = `[${embeddingResult.embedding.values.join(',')}]`;
 
