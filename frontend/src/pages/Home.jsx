@@ -14,8 +14,8 @@ export default function Home() {
       try {
         const userId = localStorage.getItem('userId');
         const url = userId 
-          ? `http://${API_URL}/api/jobs?userId=${userId}` 
-          : `http://${API_URL}/api/jobs`;
+          ? `${API_URL}/api/jobs?userId=${userId}` 
+          : `${API_URL}/api/jobs`;
 
         const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to fetch jobs');
