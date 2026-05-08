@@ -89,51 +89,64 @@ const upload = multer({
 // ==========================================
 // 3. API ROUTES
 // ==========================================
-
-// --- A. GET JOBS (With Gemini Semantic Matching & Comprehensive Fields) ---
 app.get('/api/jobs', async (req, res) => {
-  const userId = req.query.userId; 
+  const { userId, title, location } = req.query;
 
   try {
-    // Scenario 1: User is logged in, attempt AI semantic matching
+    let userVector = null;
+
+    // 1. Fetch User Embedding for AI Matching
     if (userId) {
       const userResult = await pool.query('SELECT profile_embedding FROM users WHERE id = $1', [userId]);
-      const userVector = userResult.rows[0]?.profile_embedding;
-
-      // If user has a resume embedding, calculate vector distance
-      if (userVector) {
-        const formatVector = typeof userVector === 'string' ? userVector : `[${userVector.join(',')}]`;
-        
-        const matchQuery = `
-          SELECT 
-            id, title, company, location, description, 
-            summary, responsibilities, required_skills, qualifications, preferred_skills, salary, employment_type,
-            ROUND((1 - (embedding <=> $1)) * 100)::text || '%' AS match_percentage
-          FROM jobs 
-          WHERE embedding IS NOT NULL
-          ORDER BY embedding <=> $1 ASC; -- Sort Highest Match First
-        `;
-        
-        const sortedJobs = await pool.query(matchQuery, [formatVector]);
-        return res.json(sortedJobs.rows);
-      }
+      userVector = userResult.rows[0]?.profile_embedding;
     }
 
-    // Scenario 2: No user logged in OR no resume uploaded yet (Fallback)
-    const fallbackResult = await pool.query(`
+    const params = [];
+    let matchSelect = "NULL AS match_percentage";
+    let orderBy = "created_at DESC";
+
+    // 2. Prepare AI Matching logic if user has a profile
+    if (userVector) {
+      const formatVector = typeof userVector === 'string' ? userVector : `[${userVector.join(',')}]`;
+      params.push(formatVector);
+      matchSelect = `ROUND((1 - (embedding <=> $1)) * 100)::text || '%'`;
+      orderBy = `embedding <=> $1 ASC`; // Highest match first
+    }
+
+    // 3. Base Query
+    let query = `
       SELECT 
-        id, title, company, location, description, 
+        id, title, company, location, description, is_external, external_apply_url,
         summary, responsibilities, required_skills, qualifications, preferred_skills, salary, employment_type,
-        '0%' AS match_percentage 
+        ${matchSelect} AS match_percentage
       FROM jobs 
-      WHERE embedding IS NOT NULL
-      ORDER BY id DESC
-    `);
-    res.json(fallbackResult.rows);
-    
+      WHERE 1=1
+    `;
+
+    // 4. ADD SEARCH FILTERS (ILIKE makes it case-insensitive)
+    if (title) {
+      params.push(`%${title}%`);
+      query += ` AND title ILIKE $${params.length}`;
+    }
+
+    if (location) {
+      params.push(`%${location}%`);
+      query += ` AND location ILIKE $${params.length}`;
+    }
+
+    // Ensure AI matching only runs on jobs with embeddings
+    if (userVector) {
+      query += ` AND embedding IS NOT NULL`;
+    }
+
+    query += ` ORDER BY ${orderBy};`;
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+
   } catch (err) {
-    console.error("Fetch Jobs Error:", err.message);
-    res.status(500).send('Server Error fetching jobs');
+    console.error("Fetch jobs error:", err);
+    res.status(500).json({ error: 'Failed to fetch jobs' });
   }
 });
 
@@ -603,75 +616,62 @@ app.get('/api/admin/stats', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch admin statistics' });
   }
 });
-
-// --- ARBEITNOW JOB AGGREGATION & VECTORIZATION ---
-app.post('/api/jobs/sync/arbeitnow', async (req, res) => {
+// --- 1. ARBEITNOW HELPER ---
+const syncArbeitnow = async () => {
   try {
-    console.log("Fetching jobs from Arbeitnow...");
-    
-    // 1. Fetch from Arbeitnow Open API
-    const response = await fetch('https://www.arbeitnow.com/api/job-board-api');
-    if (!response.ok) throw new Error('Failed to fetch from Arbeitnow');
-    
-    const data = await response.json();
-    const externalJobs = data.data;
-
-    let addedCount = 0;
-    // Process up to 5 jobs at a time
-    const jobsToProcess = externalJobs.slice(0, 5);
-
-    for (const job of jobsToProcess) {
-      // ✅ Deduplicate Query: Using your existing 'company' column
-      const checkExist = await pool.query(
-        'SELECT id FROM jobs WHERE title = $1 AND company = $2',
-        [job.title, job.company_name]
-      );
-
-      if (checkExist.rows.length > 0) {
-        continue; // Skip if already imported
-      }
-
-      // Clean HTML from description
-      const cleanDescription = job.description.replace(/<[^>]*>/g, '');
-
-      // Generate AI Vector Embedding with Gemini
+    const res = await fetch('https://www.arbeitnow.com/api/job-board-api');
+    const { data } = await res.json();
+    let count = 0;
+    for (const job of data.slice(0, 5)) {
+      const { rows } = await pool.query('SELECT id FROM jobs WHERE external_apply_url = $1', [job.url]);
+      if (rows.length > 0) continue;
+      const clean = job.description.replace(/<[^>]*>/g, '').substring(0, 1000);
       const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
-      const embeddingResult = await model.embedContent(cleanDescription);
-      const formatVector = `[${embeddingResult.embedding.values.join(',')}]`;
-
-      // ✅ Insert Query: Explicitly target the 'company' column
-      const insertQuery = `
-        INSERT INTO jobs (
-          title, company, description, location, 
-          is_external, external_apply_url, embedding
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `;
-
-      await pool.query(insertQuery, [
-        job.title,
-        job.company_name,                     // From Arbeitnow API
-        cleanDescription.substring(0, 1000), 
-        job.location || 'Remote',
-        true,                                 // is_external
-        job.url,                              // Original apply link
-        formatVector                          // AI Vector
-      ]);
-
-      addedCount++;
+      const embed = await model.embedContent(clean);
+      const vector = `[${embed.embedding.values.join(',')}]`;
+      await pool.query(
+        `INSERT INTO jobs (title, company, description, location, is_external, external_apply_url, embedding) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [job.title, job.company_name, clean, job.location || 'Remote', true, job.url, vector]
+      );
+      count++;
     }
+    return count;
+  } catch (e) { return 0; }
+};
 
-    res.status(200).json({
-      message: 'Arbeitnow sync completed successfully',
-      jobsAnalyzed: jobsToProcess.length,
-      newJobsAdded: addedCount
-    });
+// --- 2. ADZUNA HELPER ---
+const syncAdzuna = async () => {
+  try {
+    const url = `https://api.adzuna.com/v1/api/jobs/in/search/1?app_id=${process.env.ADZUNA_APP_ID}&app_key=${process.env.ADZUNA_APP_KEY}&results_per_page=10&content-type=application/json`;
+    const res = await fetch(url);
+    const data = await res.json();
+    let count = 0;
+    for (const job of data.results) {
+      const { rows } = await pool.query('SELECT id FROM jobs WHERE external_apply_url = $1', [job.redirect_url]);
+      if (rows.length > 0) continue;
+      const clean = job.description.replace(/<[^>]*>/g, '').substring(0, 1500);
+      const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
+      const embed = await model.embedContent(clean);
+      const vector = `[${embed.embedding.values.join(',')}]`;
+      await pool.query(
+        `INSERT INTO jobs (title, company, location, description, embedding, is_external, external_apply_url) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [job.title, job.company.display_name, job.location.display_name, clean, vector, true, job.redirect_url]
+      );
+      count++;
+    }
+    return count;
+  } catch (e) { return 0; }
+};
 
-  } catch (err) {
-    console.error("Arbeitnow Sync Error:", err);
-    res.status(500).json({ error: 'Failed to sync with Arbeitnow', details: err.message });
-  }
-});
-
+// --- 3. THE AUTOMATIC TIMER ---
+setInterval(async () => {
+  console.log("⏰ Auto-sync starting...");
+  const a = await syncArbeitnow();
+  const b = await syncAdzuna();
+  console.log(`✅ Added: Arbeitnow(${a}), Adzuna(${b})`);
+}, 12 * 60 * 60 * 1000);
 // ==========================================
 // 4. SERVER START
 // ==========================================

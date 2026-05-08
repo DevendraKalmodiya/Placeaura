@@ -7,23 +7,36 @@ export default function Jobs() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState(null);
 
-  useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await fetch(`${API_URL}/api/jobs${userId ? `?userId=${userId}` : ''}`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          setJobs(data);
-        }
-      } catch (error) {
-        console.error("Error fetching jobs:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // --- ADDED SEARCH STATES ---
+  const [searchTitle, setSearchTitle] = useState('');
+  const [searchLocation, setSearchLocation] = useState('');
 
+  // --- REFACTORED TO ALLOW MANUAL RE-FETCH ---
+  const fetchJobs = async () => {
+    setIsLoading(true);
+    try {
+      const userId = localStorage.getItem('userId');
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (userId) params.append('userId', userId);
+      if (searchTitle) params.append('title', searchTitle);
+      if (searchLocation) params.append('location', searchLocation);
+
+      const response = await fetch(`${API_URL}/api/jobs?${params.toString()}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setJobs(data);
+      }
+    } catch (error) {
+      console.error("Error fetching jobs:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchJobs();
   }, []);
 
@@ -90,6 +103,30 @@ export default function Jobs() {
         <div className="mb-10">
           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">AI Recommended Roles</h1>
           <p className="text-gray-600 mt-2 text-lg">Jobs ranked by our Gemini Semantic Matching engine based on your profile.</p>
+        </div>
+
+        {/* --- ADDED SEARCH BAR (INJECTED ONLY) --- */}
+        <div className="flex flex-col md:flex-row gap-3 mb-10">
+          <input 
+            type="text" 
+            placeholder="Search by Title..." 
+            className="flex-1 p-3 border border-gray-200 rounded-xl outline-none focus:border-blue-500"
+            value={searchTitle}
+            onChange={(e) => setSearchTitle(e.target.value)}
+          />
+          <input 
+            type="text" 
+            placeholder="Search by Location..." 
+            className="flex-1 p-3 border border-gray-200 rounded-xl outline-none focus:border-blue-500"
+            value={searchLocation}
+            onChange={(e) => setSearchLocation(e.target.value)}
+          />
+          <button 
+            onClick={fetchJobs}
+            className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition"
+          >
+            Search
+          </button>
         </div>
 
         {/* 1. THE MAIN JOBS LIST */}
