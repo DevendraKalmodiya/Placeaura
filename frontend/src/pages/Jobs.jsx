@@ -23,6 +23,8 @@ export default function Jobs() {
       if (searchTitle) params.append('title', searchTitle);
       if (searchLocation) params.append('location', searchLocation);
 
+      params.append('t', Date.now());
+
       const response = await fetch(`${API_URL}/api/jobs?${params.toString()}`);
       
       if (response.ok) {

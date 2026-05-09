@@ -140,7 +140,7 @@ app.get('/api/jobs', async (req, res) => {
     }
 
     query += ` ORDER BY ${orderBy};`;
-
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     const result = await pool.query(query, params);
     res.json(result.rows);
 
