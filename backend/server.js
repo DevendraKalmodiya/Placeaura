@@ -91,6 +91,7 @@ const upload = multer({
 // ==========================================
 app.get('/api/jobs', async (req, res) => {
   const { userId, title, location } = req.query;
+  console.log("SEARCH PARAMS RECEIVED:", { title, location });
 
   try {
     let userVector = null;
