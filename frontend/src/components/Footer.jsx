@@ -9,6 +9,7 @@ export default function Footer() {
           <p className="text-sm text-gray-400 mt-1">AI-Driven Campus Recruitment Platform</p>
         </div>
         <div className="flex space-x-6">
+          <p> Developed by Devendra </p>
           <Link to="#" className="hover:text-blue-400">About</Link>
           <Link to="#" className="hover:text-blue-400">Contact</Link>
           <Link to="#" className="hover:text-blue-400">Privacy Policy</Link>
