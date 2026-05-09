@@ -94,8 +94,6 @@ app.get('/api/jobs', async (req, res) => {
 
   try {
     let userVector = null;
-
-    // 1. Fetch User Embedding for AI Matching
     if (userId) {
       const userResult = await pool.query('SELECT profile_embedding FROM users WHERE id = $1', [userId]);
       userVector = userResult.rows[0]?.profile_embedding;
@@ -105,48 +103,40 @@ app.get('/api/jobs', async (req, res) => {
     let matchSelect = "NULL AS match_percentage";
     let orderBy = "created_at DESC";
 
-    // 2. Prepare AI Matching logic if user has a profile
     if (userVector) {
       const formatVector = typeof userVector === 'string' ? userVector : `[${userVector.join(',')}]`;
       params.push(formatVector);
       matchSelect = `ROUND((1 - (embedding <=> $1)) * 100)::text || '%'`;
-      orderBy = `embedding <=> $1 ASC`; // Highest match first
+      orderBy = `embedding <=> $1 ASC`;
     }
 
-    // 3. Base Query
+    // --- THE CRITICAL PART: Build the query dynamically ---
     let query = `
       SELECT 
-        id, title, company, location, description, is_external, external_apply_url,
-        summary, responsibilities, required_skills, qualifications, preferred_skills, salary, employment_type,
+        *, 
         ${matchSelect} AS match_percentage
       FROM jobs 
       WHERE 1=1
     `;
 
-    // 4. ADD SEARCH FILTERS (ILIKE makes it case-insensitive)
     if (title) {
-      params.push(`%${title}%`);
+      params.push(`%${title}%`); // Wrap in % for partial matching
       query += ` AND title ILIKE $${params.length}`;
     }
 
     if (location) {
-      params.push(`%${location}%`);
+      params.push(`%${location}%`); // Wrap in % for partial matching
       query += ` AND location ILIKE $${params.length}`;
     }
 
-    // Ensure AI matching only runs on jobs with embeddings
-    if (userVector) {
-      query += ` AND embedding IS NOT NULL`;
-    }
-
     query += ` ORDER BY ${orderBy};`;
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+
     const result = await pool.query(query, params);
     res.json(result.rows);
 
   } catch (err) {
-    console.error("Fetch jobs error:", err);
-    res.status(500).json({ error: 'Failed to fetch jobs' });
+    console.error(err);
+    res.status(500).send("Server Error");
   }
 });
 
