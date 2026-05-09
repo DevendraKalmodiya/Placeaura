@@ -21,7 +21,7 @@ export default function Home() {
         if (!response.ok) throw new Error('Failed to fetch jobs');
         
         const data = await response.json();
-        setLiveJobs(data); 
+        setJobs(data);
         
       } catch (error) {
         console.error("Error fetching jobs:", error);
